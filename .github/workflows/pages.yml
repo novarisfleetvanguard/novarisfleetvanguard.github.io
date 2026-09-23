@@ -1,0 +1,159 @@
+name: Publish Novaris
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+env:
+  RELEASE_ARCHIVE: "https://d2ol7oe51mr4n9.cloudfront.net/user_3JhNmvCzUCKk0qtTSDENBipdTpA/43461d26-d684-4c58-872c-33c589d7f73e.zip"
+  RELEASE_SHA256: "4514713e9297549cf02204e73244a17c5e19dbf692591fffae45f552af13dd4f"
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Import verified release source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import shutil
+          import stat
+          import tempfile
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          root = Path.cwd().resolve()
+          url = os.environ["RELEASE_ARCHIVE"]
+          expected = os.environ["RELEASE_SHA256"].strip().lower()
+          if not re.fullmatch(r"[0-9a-f]{64}", expected):
+              raise SystemExit("Set RELEASE_SHA256 to the release archive SHA-256.")
+          marker = root / ".release-sha"
+          if marker.is_file() and marker.read_text().strip() == expected:
+              if not (root / "app/public/index.html").is_file():
+                  raise SystemExit("Release marker exists but the site is missing.")
+              print("Verified release already imported; publishing checked-in source.")
+              raise SystemExit(0)
+          def require_https(value):
+              parsed = urllib.parse.urlsplit(value)
+              if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+                  raise ValueError("The release archive must use an HTTPS URL.")
+          require_https(url)
+          max_archive = 100 * 1024 * 1024
+          max_expanded = 250 * 1024 * 1024
+          with tempfile.TemporaryDirectory(prefix="novaris-release-") as temporary:
+              temporary = Path(temporary)
+              archive = temporary / "release.zip"
+              digest = hashlib.sha256()
+              request = urllib.request.Request(url, headers={"User-Agent": "Novaris-Release"})
+              with urllib.request.urlopen(request, timeout=60) as response, archive.open("wb") as output:
+                  require_https(response.geturl())
+                  length = response.headers.get("Content-Length")
+                  if length and int(length) > max_archive:
+                      raise ValueError("Release archive exceeds 100 MiB.")
+                  downloaded = 0
+                  while True:
+                      block = response.read(1024 * 1024)
+                      if not block:
+                          break
+                      downloaded += len(block)
+                      if downloaded > max_archive:
+                          raise ValueError("Release archive exceeds 100 MiB.")
+                      digest.update(block)
+                      output.write(block)
+              if digest.hexdigest() != expected:
+                  raise ValueError("Release archive SHA-256 does not match.")
+              stage = temporary / "source"
+              stage.mkdir()
+              with zipfile.ZipFile(archive) as bundle:
+                  entries = bundle.infolist()
+                  if len(entries) > 20000:
+                      raise ValueError("Release archive contains too many entries.")
+                  if sum(entry.file_size for entry in entries) > max_expanded:
+                      raise ValueError("Expanded release exceeds 250 MiB.")
+                  seen = set()
+                  checked = []
+                  for entry in entries:
+                      name = entry.filename
+                      parts = PurePosixPath(name).parts
+                      if not parts or name.startswith("/") or "\\" in name or "\x00" in name:
+                          raise ValueError("Invalid archive path.")
+                      if any(part in ("", ".", "..", ".git") for part in name.rstrip("/").split("/")):
+                          raise ValueError("Unsafe archive path.")
+                      if not (parts[0] in ("app", "design") or name == "README.md"):
+                          raise ValueError("Archive must contain only app/, design/, and README.md.")
+                      if len(parts) == 1 and parts[0] in ("app", "design") and not entry.is_dir():
+                          raise ValueError("Source roots must be directories.")
+                      canonical = "/".join(parts)
+                      if canonical in seen:
+                          raise ValueError("Duplicate archive path.")
+                      seen.add(canonical)
+                      mode = entry.external_attr >> 16
+                      if stat.S_IFMT(mode) not in (0, stat.S_IFREG, stat.S_IFDIR):
+                          raise ValueError("Links and special files are not allowed.")
+                      if entry.flag_bits & 1:
+                          raise ValueError("Encrypted archive entries are not allowed.")
+                      target = stage.joinpath(*parts)
+                      target.resolve().relative_to(stage.resolve())
+                      checked.append((entry, target))
+                  for entry, target in checked:
+                      if entry.is_dir():
+                          target.mkdir(parents=True, exist_ok=True)
+                      else:
+                          target.parent.mkdir(parents=True, exist_ok=True)
+                          with bundle.open(entry) as source, target.open("wb") as destination:
+                              shutil.copyfileobj(source, destination)
+                          target.chmod(0o755 if (entry.external_attr >> 16) & 0o111 else 0o644)
+              if not (stage / "app/public/index.html").is_file() or not (stage / "README.md").is_file():
+                  raise ValueError("Release must include app/public/index.html and README.md.")
+              for name in ("app", "design"):
+                  target = root / name
+                  if target.is_symlink() or target.is_file():
+                      target.unlink()
+                  elif target.exists():
+                      shutil.rmtree(target)
+                  source = stage / name
+                  if source.exists():
+                      shutil.copytree(source, target)
+              shutil.copy2(stage / "README.md", root / "README.md")
+              marker.write_text(expected + "\n")
+              print("Release checksum and archive paths verified; source imported.")
+          PY
+      - name: Preserve release source in the repository
+        shell: bash
+        run: |
+          git add -A -- app README.md .release-sha
+          if [ -d design ] || git ls-files --error-unmatch design >/dev/null 2>&1; then
+            git add -A -- design
+          fi
+          if ! git diff --cached --quiet; then
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -m "Import verified Novaris release"
+            git push origin HEAD:main
+          fi
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload native site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/public
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
