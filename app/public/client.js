@@ -1,9 +1,9 @@
-import {AstralFrontispiece} from './astral.js?v=4';
-import {ARCHIVE} from './archive.js?v=4';
-import {WorldRenderer} from './renderer.js?v=4';
-import {AudioEngine} from './audio.js?v=4';
-import {playIntro} from './intro.js?v=4';
-import {CHAPTERS} from './manual.js?v=4';
+import {AstralFrontispiece} from './astral.js?v=5';
+import {ARCHIVE} from './archive.js?v=5';
+import {WorldRenderer} from './renderer.js?v=5';
+import {AudioEngine} from './audio.js?v=5';
+import {playIntro} from './intro.js?v=5';
+import {CHAPTERS} from './manual.js?v=5';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,7 +28,7 @@ const self=()=>view?.players?.find(p=>p.id===you);
 const canPlay=()=>view?.phase==='playing'&&self()?.alive&&!modal.open&&activePanel==='hud'&&!document.hidden;
 try{astral=new AstralFrontispiece($('astral'),{quality:settings.quality,reducedMotion:settings.reduced});astral.load().catch(e=>console.warn('Vessel preview unavailable',e));}catch(e){console.warn('Astral scene unavailable',e);}
 canvas.style.visibility='hidden';
-function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=4';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
+function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=5';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
 updateBrandMotion();
 function saveSettings(){updateBrandMotion();try{localStorage.setItem('novaris-settings',JSON.stringify(settings));}catch{}audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);world?.setQuality?.(settings.quality);world?.setReducedMotion?.(settings.reduced);astral?.setReducedMotion(settings.reduced);astral?.setQuality?.(settings.quality);audio.setReducedMotion?.(settings.reduced);}
 function notice(text){if(modal.open){const output=modalKind==='interact'?$('interact-result'):$('modal-notice');if(output){output.textContent=text;output.classList.remove('hidden');return;}}$('toast-text').textContent=text;$('toast').classList.remove('hidden');}
@@ -37,7 +37,8 @@ function releaseInput(){keys.clear();mouseFire=false;mouseGuard=false;dragPointe
 function openModal(kind,kicker,html){releaseInput();if(document.pointerLockElement)document.exitPointerLock();modalKind=kind;$('modal-kicker').textContent=kicker;$('modal-notice').textContent='';$('modal-notice').classList.add('hidden');body.innerHTML=html;if(!modal.open)modal.showModal();modal.scrollTop=0;body.scrollTop=0;$('modal-kicker').focus({preventScroll:true});}
 function closeModal(){modal.close();modalKind='';releaseInput();}
 $('close-modal').onclick=closeModal;modal.addEventListener('cancel',()=>{modalKind='';releaseInput();});
-$('toast-close').onclick=()=>$('toast').classList.add('hidden');
+function dismissOverlay(id){$(id).classList.add('hidden');if(activePanel==='hud'&&!modal.open)canvas.focus({preventScroll:true});}
+$('toast-close').onclick=()=>dismissOverlay('toast');
 document.addEventListener('click',e=>{if(e.target.closest('button'))audio.sfx('click');if(e.detail>0&&e.target.closest('#hud button')&&canPlay())canvas.focus({preventScroll:true});});
 document.addEventListener('pointerover',e=>{if(e.target.closest('button')&&e.pointerType==='mouse')audio.sfx('hover');});
 function settingsModal(){
@@ -57,12 +58,12 @@ function loadingStage(n){['load-model','load-worlds','load-ready'].forEach((id,i
 async function loadWorld(){if(loaded)return;if(loadPromise)return loadPromise;loadPromise=(async()=>{world?.dispose();world=null;world=new WorldRenderer(canvas,{quality:settings.quality,reducedMotion:settings.reduced});await world.load(progress=>{const stage=progress.fraction<.55?0:progress.fraction<1?1:2;loadingStage(stage);$('load-status').textContent=['Forging crescent hulls and ivory armor…','Charting Ember Reach and Veil Garden…','The fleet awaits your command.'][stage];});loaded=true;})();try{await loadPromise;}catch(e){world?.dispose();world=null;loaded=false;loadPromise=null;throw e;}}
 async function finishIntro(){if(finishingIntro)return;finishingIntro=true;introController?.stop();panel('loading');audio.setScene('menu');loadingStage(0);$('load-retry').classList.add('hidden');try{await loadWorld();loadingStage(3);$('load-status').textContent='The Vanguard is ready. Continue when you choose.';$('load-enter').classList.remove('hidden');}catch(error){console.error(error);$('load-status').textContent=/webgl|graphics context/i.test(String(error?.message))?'This browser could not start 3D graphics. Enable hardware acceleration or try an up-to-date browser, then retry.':'The armory could not load. Check your connection, then retry.';$('load-retry').classList.remove('hidden');}finally{finishingIntro=false;}}
 function beginIntro(){introController?.stop();panel('intro');audio.setScene('intro');introController=playIntro($('intro-canvas'),{onComplete:finishIntro,reducedMotion:settings.reduced,audio});}
-$('enter').onclick=async()=>{if(booted)return;booted=true;await audio.unlock();beginIntro();};
+$('enter').onclick=()=>{if(booted)return;booted=true;void audio.unlock();beginIntro();};
 $('skip-intro').onclick=finishIntro;$('replay-intro').onclick=beginIntro;$('load-retry').onclick=finishIntro;
 $('load-enter').onclick=()=>{panel('menu');const code=new URLSearchParams(location.search).get('room');if(code){$('room-input').value=code;$('join-form').classList.remove('hidden');notice('Crew invitation loaded. Enter your callsign, then select JOIN.');}};
 function archive(section='all'){const entries=section==='all'?ARCHIVE:ARCHIVE.filter(x=>x.section===section);openModal('archive','THE NOVARIS ARCHIVE','<h2>Empires become starlight.</h2><img id="archive-splash" src="./assets/celestial-atlas.webp" alt="The ruined orbital temples of Novaris above a violet planet"><p>When the old worlds fell, their fleets carried more than weapons. They carried the forms of home: a curved eave, a marble arch, a longship’s ribs. Among the ruins of Novaris, those memories became a new civilization.</p><div class="archive-grid">'+entries.map(x=>'<article class="archive-card"><span class="archive-mark">'+x.mark+'</span><small>'+x.kicker+'</small><h3>'+x.name+'</h3><p>'+x.text+'</p></article>').join('')+'</div><p>The archive describes the places and equipment in this sortie. Open the field manual for the complete rules and controls.</p><button class="primary" id="archive-close">RETURN TO COMMAND</button><button class="secondary" id="archive-manual">FIELD MANUAL</button>');$('archive-close').onclick=closeModal;$('archive-manual').onclick=()=>manual();}
 $('menu-codex').onclick=()=>archive();$('frontier-space').onclick=()=>archive('space');$('frontier-ground').onclick=()=>archive('ground');$('frontier-ship').onclick=()=>archive('ship');
-$('arrival-dismiss').onclick=()=>$('zone-arrival').classList.add('hidden');
+$('arrival-dismiss').onclick=()=>dismissOverlay('zone-arrival');
 $('dash-action').onclick=()=>{if(canPlay())action({type:'dash'});};
 $('open-join').onclick=()=>{$('join-form').classList.toggle('hidden');if(!$('join-form').classList.contains('hidden'))$('room-input').focus();};
 try{$('callsign').value=localStorage.getItem('novaris-name')||'Drifter';}catch{}

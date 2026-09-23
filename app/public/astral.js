@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {GLTFLoader} from './vendor/GLTFLoader.js?v=4';
+import {loadVanguardModel} from './model-loader.js?v=5';
 
 // The fleet's astronomical instrument: a live, spatial frontispiece, never a video loop.
 export class AstralFrontispiece {
@@ -25,7 +25,7 @@ export class AstralFrontispiece {
   this.dust=new T.Mesh(new T.TorusGeometry(7,.006,3,150),new T.MeshBasicMaterial({color:0x6c5980,transparent:true,opacity:.38}));this.dust.rotation.set(1.12,0,.17);this.scene.add(this.dust);
   this.onPointer=e=>{this.pointer.set(e.clientX/innerWidth*2-1,e.clientY/innerHeight*2-1);};window.addEventListener('pointermove',this.onPointer,{passive:true});this.setQuality(this.quality);
  }
- async load(){if(this.disposed)throw new Error('Frontispiece has been disposed');if(this.ship)return this;if(!this.loadingPromise)this.loadingPromise=(async()=>{const gltf=await new GLTFLoader().loadAsync('./assets/novaris-vanguard.glb?v=4');if(this.disposed){release(gltf.scene);throw new Error('Frontispiece disposed during asset loading');}const original=gltf.scene.getObjectByName('PlayerFighter');if(!original){release(gltf.scene);throw new Error('Missing model PlayerFighter');}this.ship=original.clone(true);this.ship.position.set(0,0,0);this.ship.rotation.set(.12,-.72,-.06);this.ship.scale.setScalar(.56);this.shipOrbit.add(this.ship);return this;})().catch(error=>{this.loadingPromise=null;throw error;});return this.loadingPromise;}
+ async load(){if(this.disposed)throw new Error('Frontispiece has been disposed');if(this.ship)return this;if(!this.loadingPromise)this.loadingPromise=(async()=>{const gltf=await loadVanguardModel();if(this.disposed){release(gltf.scene);throw new Error('Frontispiece disposed during asset loading');}const original=gltf.scene.getObjectByName('PlayerFighter');if(!original){release(gltf.scene);throw new Error('Missing model PlayerFighter');}this.ship=original.clone(true);this.ship.position.set(0,0,0);this.ship.rotation.set(.12,-.72,-.06);this.ship.scale.setScalar(.56);this.shipOrbit.add(this.ship);return this;})().catch(error=>{this.loadingPromise=null;throw error;});return this.loadingPromise;}
  setMode(mode){if(this.disposed)return;this.mode=mode;this.canvas.style.visibility=['boot','loading','menu','lobby'].includes(mode)?'visible':'hidden';}
  setReducedMotion(v){this.reduced=!!v;}
  setQuality(q){if(this.disposed)return;this.quality=q==='low'?'low':'high';this.stars.geometry.setDrawRange(0,this.quality==='low'?900:1800);this.resize();}

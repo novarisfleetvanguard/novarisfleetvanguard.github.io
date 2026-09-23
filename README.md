@@ -59,3 +59,7 @@ For browser edge cases, start the local game, run `bunx playwright install chrom
 The game needs a browser with WebGL support. Physical-device performance varies; the release report records the devices and conditions actually checked.
 
 `node scripts/check-browser-deep.cjs` adds real two-pilot simultaneous audio, mouse-button chord and audio-resource regressions. It uses the same browser and URL configuration as the primary browser audit.
+
+`node scripts/check-browser-loading.cjs` checks a pending audio activation, a stalled model download and a malformed model response. Each failure must expose an explicit retry, and a fresh successful request must reach the command menu. Model downloads have a 30-second deadline.
+
+`node scripts/check-browser-keyboard.cjs` checks keyboard launch, firing after arrival and notice dismissal, and focus inside the manual. `BROWSER` selects Chromium, Firefox or WebKit; install the matching Playwright browser first.

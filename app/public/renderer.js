@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { GLTFLoader } from './vendor/GLTFLoader.js?v=4';
-import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=4';
-import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=4';
-import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=4';
+import { loadVanguardModel } from './model-loader.js?v=5';
+import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=5';
+import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=5';
+import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=5';
 
 const V=THREE.Vector3, C=THREE.Color, TAU=Math.PI*2;
 const list=x=>Array.isArray(x)?x:Object.values(x||{});
@@ -47,10 +47,10 @@ export class WorldRenderer {
   constructor(canvas,{quality='high',reducedMotion=false}={}){
     this.canvas=canvas;this.disposed=false;this.contextLost=false;this.quality=quality==='low'?'low':'high';this.reducedMotion=reducedMotion;this.scene=new THREE.Scene();this.scene.background=new C('#020611');this.camera=new THREE.PerspectiveCamera(66,1,.15,3000);
     this.renderer=new THREE.WebGLRenderer({canvas,antialias:quality==='high',alpha:false,powerPreference:'high-performance'});this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.25;
-    this.onContextLost=e=>{e.preventDefault();this.contextLost=true;if(this.info)this.info.contextLost=true;};this.onContextRestored=()=>{this.contextLost=false;this.cameraReady=false;if(this.info)this.info.contextLost=false;this.resize();};canvas.addEventListener('webglcontextlost',this.onContextLost);canvas.addEventListener('webglcontextrestored',this.onContextRestored);
+    this.onContextLost=e=>{e.preventDefault();this.contextLost=true;this.fpsWindowStart=null;this.fpsFrames=0;if(this.info)this.info.contextLost=true;};this.onContextRestored=()=>{this.contextLost=false;this.cameraReady=false;if(this.info)this.info.contextLost=false;this.resize();};canvas.addEventListener('webglcontextlost',this.onContextLost);canvas.addEventListener('webglcontextrestored',this.onContextRestored);
     this.scene.add(new THREE.HemisphereLight(0xb0d7ff,0x15202d,2.2));const key=new THREE.DirectionalLight(0xffedd6,2.8);key.position.set(-50,80,35);this.scene.add(key);this.key=key;
     this.fill=new THREE.DirectionalLight(0x38a5ff,1.1);this.fill.position.set(40,10,-30);this.scene.add(this.fill);
-    this.entities=new Map();this.markers=new Map();this.covers=new Map();this.environments=new Map();this.models={};this.state=null;this.zone='space';this.time=0;this.windUniform={value:0};this.cameraReady=false;this.info={fps:0,drawcalls:0,triangles:0};this.loaded=false;
+    this.entities=new Map();this.markers=new Map();this.covers=new Map();this.environments=new Map();this.models={};this.state=null;this.zone='space';this.time=0;this.windUniform={value:0};this.cameraReady=false;this.info={fps:0,drawcalls:0,triangles:0};this.fpsWindowStart=null;this.fpsFrames=0;this.loaded=false;
     this.zoneObstacles=[];this.bulletStart=new V();this.bulletHead=new V();this.bulletTail=new V();this.bulletVelocity=new V();
     this.dynamic=new THREE.Group();this.scene.add(this.dynamic);
     this.bullets=new THREE.InstancedMesh(new THREE.BoxGeometry(.12,.12,1),new THREE.MeshBasicMaterial({color:0xffffff}),320);this.bullets.count=0;this.bullets.frustumCulled=false;this.scene.add(this.bullets);
@@ -63,7 +63,7 @@ export class WorldRenderer {
   }
   async loadAssets(onProgress){
     const progress=(fraction,stage)=>{if(typeof onProgress==='function')onProgress({fraction,stage});};progress(0,'Loading authored spacecraft and armor');
-    const gltf=await new GLTFLoader().loadAsync('./assets/novaris-vanguard.glb?v=4');
+    const gltf=await loadVanguardModel();
     if(this.disposed){disposeGraph(gltf.scene);throw new Error('Renderer disposed during asset loading');}
     progress(.55,'Blender assets received');
     for(const name of ['PlayerFighter','EnemyFighter','SpaceMarine','AlienDrone','RiftCrystal','Flagship','ShipCorridor']){const root=gltf.scene.getObjectByName(name);if(!root)throw new Error('Missing model '+name);this.models[name]=compact(root);}
@@ -81,7 +81,7 @@ export class WorldRenderer {
   }
   setReducedMotion(b){this.reducedMotion=!!b;if(this.reducedMotion){this.shake=0;this.camera.fov=66;this.camera.updateProjectionMatrix();}}
   reset(){
-    if(this.disposed)return;for(const map of[this.entities,this.markers,this.covers]){map.forEach(value=>{const root=value.group||value;this.dynamic.remove(root);this.disposeUnique(root);});map.clear();}this.state=null;this.self=null;this.zoneObstacles=[];this.cameraReady=false;this.aimYaw=undefined;this.aimPitch=undefined;this.particles.length=0;this.particleGeo.setDrawRange(0,0);this.bullets.count=0;this.contactShadows.count=0;this.shake=0;if(this.loaded){this.setZone('space');if(this.showcase)this.showcase.visible=true;}
+    if(this.disposed)return;for(const map of[this.entities,this.markers,this.covers]){map.forEach(value=>{const root=value.group||value;this.dynamic.remove(root);this.disposeUnique(root);});map.clear();}this.state=null;this.self=null;this.zoneObstacles=[];this.cameraReady=false;this.fpsWindowStart=null;this.fpsFrames=0;this.aimYaw=undefined;this.aimPitch=undefined;this.particles.length=0;this.particleGeo.setDrawRange(0,0);this.bullets.count=0;this.contactShadows.count=0;this.shake=0;if(this.loaded){this.setZone('space');if(this.showcase)this.showcase.visible=true;}
   }
   setZone(zone,force=false){
     if(!force&&this.zone===zone)return;this.zone=zone;this.cameraReady=false;this.particles.length=0;
@@ -217,12 +217,12 @@ export class WorldRenderer {
 
   buildInterior(env,zone){
     const hostile=zone==='dreadnought',col=hostile?0xff7152:0x59e9f6;
-    const corridor=this.clone('ShipCorridor');corridor.scale.set(5.55,1.5,7.5);env.add(corridor);
+    const corridor=this.clone('ShipCorridor');corridor.scale.set(6.8,1.5,8.9);env.add(corridor);
     const grid=new THREE.GridHelper(64,32,col,0x243d50);grid.scale.x=.5;grid.position.y=.135;grid.material.transparent=true;grid.material.opacity=.18;env.add(grid);
-    const ribs=[],strips=[];for(const z of [-27,-18,-9,9,18,27]){for(const s of [-1,1]){ribs.push({p:[s*15.2,3.5,z],s:[.28,7,.5]});strips.push({p:[s*14.95,3.3,z],s:[.08,5.2,.16]});}ribs.push({p:[0,7.1,z],s:[30.6,.4,.5]});}
+    const ribs=[],strips=[];for(const z of [-27,-18,-9,9,18,27]){for(const s of [-1,1]){ribs.push({p:[s*16.7,3.5,z],s:[.28,7,.5]});strips.push({p:[s*16.45,3.3,z],s:[.08,5.2,.16]});}ribs.push({p:[0,7.1,z],s:[33.6,.4,.5]});}
     instances(env,new THREE.BoxGeometry(1,1,1),material(0x142638,0,.38,.8),ribs);instances(env,new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:col}),strips);
-    for(const z of [-30,30]){box(env,material(0x152234),[0,.65,z],[32,1.3,.5]);const ring=mesh(new THREE.TorusGeometry(4,.16,6,48),new THREE.MeshBasicMaterial({color:col}),env,[0,4,z]);ring.scale.y=.65;box(env,material(0x21425a),[0,6.6,z],[9,.4,.5]);}
-    for(const s of [-1,1])for(const z of [-22,0,22]){box(env,material(hostile?0x762f2c:0x224d65),[s*14.4,4,z],[.05,3.6,1.6]);const crest=mesh(new THREE.TorusGeometry(.52,.08,4,3),new THREE.MeshBasicMaterial({color:0xffc981}),env,[s*14.25,4,z]);crest.rotation.y=Math.PI/2;}
+    for(const z of [-31.5,31.5]){box(env,material(0x152234),[0,.65,z],[35,1.3,.5]);const ring=mesh(new THREE.TorusGeometry(4,.16,6,48),new THREE.MeshBasicMaterial({color:col}),env,[0,4,z]);ring.scale.y=.65;box(env,material(0x21425a),[0,6.6,z],[9,.4,.5]);}
+    for(const s of [-1,1])for(const z of [-22,0,22]){box(env,material(hostile?0x762f2c:0x224d65),[s*16.3,4,z],[.05,3.6,1.6]);const crest=mesh(new THREE.TorusGeometry(.52,.08,4,3),new THREE.MeshBasicMaterial({color:0xffc981}),env,[s*16.15,4,z]);crest.rotation.y=Math.PI/2;}
     const path=[];for(let z=-26;z<=26;z+=4)for(const x of[-3.8,3.8])path.push({p:[x,.15,z],s:[.12,.018,1.5]});instances(env,new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0xdba95b,transparent:true,opacity:.48}),path);const light=new THREE.PointLight(col,28,38,1);light.position.set(0,6,0);env.add(light);this.buildStars(env,500,600);astralInterior(this,env,zone);
   }
   makeLabel(parent,color=0x8be8f0,height=3.5){
@@ -271,8 +271,8 @@ export class WorldRenderer {
     if(zone==='space')for(const p of list(state.planets)){if(!this.spacePlanets.has(p.id))this.spacePlanets.set(p.id,this.makePlanet(p));}
     const covered=new Set();for(const o of this.zoneObstacles){covered.add(o.id);if(!this.covers.has(o.id)){const original=createCover(o,this),g=compact(original,true);g.position.copy(original.position);g.userData.cover=o;original.traverse(o=>{if(o.geometry)o.geometry.dispose();});this.covers.set(o.id,g);this.dynamic.add(g);}}this.covers.forEach((g,id)=>{if(!covered.has(id)){this.dynamic.remove(g);this.disposeUnique(g);this.covers.delete(id);}});
     const seen=new Set();for(const e of [...players,...list(state.npcs)]){
-      if(e.zone!==zone||!e.alive||e.connected===false)continue;seen.add(e.id);let rec=this.entities.get(e.id);const wantSpace=zone==='space';if(rec&&(rec.zone!==zone||rec.appearanceKey!==this.entityAppearance(e).key)){this.dynamic.remove(rec.group);this.disposeUnique(rec.group);this.entities.delete(e.id);rec=null;}if(!rec)rec=this.createEntity(e);
-      rec.entity=e;const next=new V(finite(e.x),finite(e.y),finite(e.z));if(rec.target.distanceTo(next)>(zone==='space'?80:20))rec.group.position.copy(next);rec.target.copy(next);rec.yaw=finite(e.yaw);rec.pitch=finite(e.pitch);rec.group.visible=true;
+      if(e.zone!==zone||!e.alive||e.connected===false)continue;seen.add(e.id);let rec=this.entities.get(e.id);const wantSpace=zone==='space';if(rec&&(rec.zone!==zone||rec.appearanceKey!==this.entityAppearance(e).key)){this.dynamic.remove(rec.group);this.disposeUnique(rec.group);this.entities.delete(e.id);rec=null;}if(!rec){rec=this.createEntity(e);if(e.id===state.you)this.cameraReady=false;}
+      rec.entity=e;const next=new V(finite(e.x),finite(e.y),finite(e.z));if(rec.target.distanceTo(next)>(zone==='space'?80:20)){rec.group.position.copy(next);if(e.id===state.you)this.cameraReady=false;}rec.target.copy(next);rec.yaw=finite(e.yaw);rec.pitch=finite(e.pitch);rec.group.visible=true;
     }
     if(zone==='space')for(const p of players){if(p.zone==='space'||!p.ship)continue;const id='parked:'+p.id;seen.add(id);const e={...p,...p.ship,zone:'space',alive:true};let rec=this.entities.get(id);if(!rec)rec=this.createEntity(e,true);rec.target.set(e.x,e.y,e.z);rec.yaw=finite(e.yaw);rec.group.visible=true;}
     this.entities.forEach((r,id)=>{if(!seen.has(id)){this.dynamic.remove(r.group);this.disposeUnique(r.group);this.entities.delete(id);}});
@@ -332,7 +332,7 @@ export class WorldRenderer {
     }else{
       if(this.showcase){this.showcase.position.y=this.reducedMotion?0:Math.sin(this.time*.6)*.22;this.showcase.rotation.y=-.32+(this.reducedMotion?0:Math.sin(this.time*.12)*.08);}this.camera.position.set(10,6,-15);this.camera.lookAt(0,0,0);
     }
-    this.renderLabels();this.renderer.render(this.scene,this.camera);this.info.fps=this.info.fps?this.info.fps*.95+(1/dt)*.05:1/dt;this.info.drawcalls=this.renderer.info.render.calls;this.info.triangles=this.renderer.info.render.triangles;
+    this.renderLabels();this.renderer.render(this.scene,this.camera);const frameNow=performance.now();if(this.fpsWindowStart===null){this.fpsWindowStart=frameNow;this.fpsFrames=0;}else{this.fpsFrames++;const elapsed=frameNow-this.fpsWindowStart;if(elapsed>=500){this.info.fps=this.fpsFrames*1000/elapsed;this.fpsFrames=0;this.fpsWindowStart=frameNow;}}this.info.drawcalls=this.renderer.info.render.calls;this.info.triangles=this.renderer.info.render.triangles;
   }
   project(entity){
     if(!entity)return null;const point=new V(finite(entity.x),finite(entity.y)+(entity.zone==='space'?1:3.2),finite(entity.z)),distance=this.camera.position.distanceTo(point);point.project(this.camera);return{x:(point.x*.5+.5)*this.canvas.clientWidth,y:(-point.y*.5+.5)*this.canvas.clientHeight,visible:point.z>-1&&point.z<1&&Math.abs(point.x)<1&&Math.abs(point.y)<1,distance,normalizedX:point.x*.5+.5,normalizedY:-point.y*.5+.5};

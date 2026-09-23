@@ -84,4 +84,21 @@ describe("real Workers WebSockets",()=>{
     const name=uniq(),a=await join(name),b=await join(name);await ready(a);const binding=(env as unknown as Env).ROOMS;await evictDurableObject(binding.get(binding.idFromName(name)));await ready(b);a.action({type:"start"});const state=await b.next(f=>f.type==="state"&&f.status==="playing");expect(state.connected).toBe(2);expect(state.view.hostId).toBe(a.id);expect(state.view.players.every((p:any)=>p.connected)).toBe(true);a.ws.close();b.ws.close();
   });
 
+  it("serializes a lobby reset racing with boarding and starts the next sortie cleanly",async()=>{
+    const name=uniq(),a=await join(name),b=await join(name);await ready(a);await ready(b);a.action({type:"start"});const active=await a.next(f=>f.type==="state"&&f.status==="playing");const oldSeq=Math.max(...active.view.events.map((e:any)=>e.seq));
+    b.action({type:"interact",targetId:"board:"+a.id});a.send({type:"reset"});await a.next(f=>f.type==="state"&&f.status==="lobby"&&f.view.tick===0);await scheduler.wait(130);
+    const binding=(env as unknown as Env).ROOMS;await runInDurableObject(binding.get(binding.idFromName(name)),async(_instance,ctx)=>{const game:any=await ctx.storage.get("game");expect(game.state.phase).toBe("lobby");expect(game.state.tick).toBe(0);expect(game.state.npcs).toEqual([]);expect(game.state.projectiles).toEqual([]);expect(game.state.players.every((p:any)=>p.zone==="space"&&!p.ready&&!p.input.fire)).toBe(true);expect(await ctx.storage.getAlarm()).toBeNull();});
+    a.frames.length=0;b.frames.length=0;await ready(a);await ready(b);a.action({type:"start"});const again=await a.next(f=>f.type==="state"&&f.status==="playing");expect(again.view.events.find((e:any)=>e.type==="start").seq).toBeGreaterThan(oldSeq);a.ws.close();b.ws.close();
+  });
+  it("cannot duplicate or resurrect a seat when release races with token reconnect",async()=>{
+    for(const reconnectFirst of [false,true]){const name=uniq(),a=await join(name),b=await join(name);b.ws.close();await a.next(f=>f.type==="state"&&f.view.players.find((p:any)=>p.id===b.id)?.connected===false);a.frames.length=0;const replacement=await open(name);const reconnect=()=>replacement.send({type:"join",playerId:b.id,token:b.token});const release=()=>a.action({type:"dismiss",playerId:b.id});if(reconnectFirst){reconnect();release();}else{release();reconnect();}
+      const result=await replacement.next(f=>f.type==="welcome"||f.type==="error");if(result.type==="welcome"){expect(result.playerId).toBe(b.id);const state=await a.next(f=>f.type==="state"&&f.view.players.find((p:any)=>p.id===b.id)?.connected);expect(state.seats).toEqual([a.id,b.id]);expect(state.connected).toBe(2);}else{expect(result.error).toBe("unknown reconnect identity");const state=await a.next(f=>f.type==="state"&&f.seats.length===1);expect(state.seats).toEqual([a.id]);}
+      a.ws.close();replacement.ws.close();
+    }
+  });
+  it("enforces UTF-8 byte limits and rejects overflowing JSON numbers without corrupting play",async()=>{
+    const a=await join(uniq());await ready(a);a.action({type:"start"});await a.next(f=>f.type==="state"&&f.status==="playing");a.action({type:"input",extra:"🚀".repeat(2000)});expect((await a.error()).error).toBe("action too large");
+    a.ws.send('{"type":"action","action":{"type":"input","mx":1e309,"my":0,"mz":0,"yaw":0,"pitch":0,"fire":false,"boost":false}}');expect((await a.error()).error).toBe("movement must be finite numbers");a.action({type:"input",mx:0,my:0,mz:0,yaw:1000000,pitch:1.6,fire:false,boost:false});const state=await a.next(f=>f.type==="state"&&f.view.players[0].yaw!==0);expect(Number.isFinite(state.view.players[0].yaw)).toBe(true);expect(Math.abs(state.view.players[0].pitch)).toBeLessThanOrEqual(1.4);a.ws.close();
+  });
+
 });

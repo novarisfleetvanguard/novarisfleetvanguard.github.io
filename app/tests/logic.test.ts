@@ -158,4 +158,13 @@ describe("authoritative simulation",()=>{
     s=act(s,"a",{...input,fire:true});s=act(s,"b",{...input,yaw:Math.PI,fire:true});s=advance(s);expect(s.phase).toBe("over");expect(s.events.filter((e:any)=>e.type==="victory")).toHaveLength(1);expect(s.players.map((p:any)=>p.score).sort()).toEqual([11,12]);expect(s.projectiles).toEqual([]);expect(advance(s,5)).toEqual(s);
   });
 
+  it("applies guard presses and releases before melee regardless of seating order",()=>{
+    for(const defender of ["a","b"])for(const held of [true,false]){let s=started("skirmish");s.npcs=[];s.tick=130;for(const [i,p] of s.players.entries())Object.assign(p,{zone:"ship:a",x:0,y:0,z:i*3});const attacker=defender==="a"?"b":"a";const d=s.players.find((p:any)=>p.id===defender);d.guard=!held;s.players.find((p:any)=>p.id===attacker).weapon="blade";
+      s=act(s,defender,{...input,yaw:defender==="a"?0:Math.PI,guard:held});s=act(s,attacker,{...input,yaw:attacker==="a"?0:Math.PI,fire:true});s=advance(s);expect(s.players.find((p:any)=>p.id===defender).shield).toBeCloseTo(held?56.4:36);
+    }
+  });
+  it("honours the final paid guard tick before energy depletion drops the brace",()=>{
+    let s=started("skirmish");s.npcs=[];s.tick=130;Object.assign(s.players[0],{zone:"ship:a",x:0,y:0,z:0,energy:2});Object.assign(s.players[1],{zone:"ship:a",x:0,y:0,z:8});s=act(s,"a",{...input,guard:true});s=act(s,"b",{...input,yaw:Math.PI,fire:true});s=advance(s);expect(s.players[0]).toMatchObject({guard:true,energy:0});expect(s.players[0].shield).toBeCloseTo(62.8);s=advance(s);expect(s.players[0].guard).toBe(false);
+  });
+
 });

@@ -158,7 +158,7 @@ function damage(s,victim,amount,attackerId,weapon,incoming=null){
   if(s.phase!=="playing"||!victim.alive)return;
   if(victim.connected!==undefined&&(s.tick<victim.launchUntil||s.tick-victim.spawnAt<20||!victim.connected))return;
   if(weapon!=="reactor"&&victim.dashUntil>s.tick)return;
-  if(weapon!=="reactor"&&victim.guard&&victim.energy>=1){const attacker=s.players.concat(s.npcs).find(q=>q.id===attackerId);if(incoming||(attacker&&attacker.zone===victim.zone)){const dx=incoming?incoming.x:attacker.x-victim.x,dz=incoming?incoming.z:attacker.z-victim.z,front=(Math.sin(victim.yaw)*dx+Math.cos(victim.yaw)*dz)/Math.max(.01,Math.hypot(dx,dz));if(front>.15){amount*=.4;event(s,"block",victim,{actorId:victim.id,targetId:attackerId});}}}
+  if(weapon!=="reactor"&&victim.guard){const attacker=s.players.concat(s.npcs).find(q=>q.id===attackerId);if(incoming||(attacker&&attacker.zone===victim.zone)){const dx=incoming?incoming.x:attacker.x-victim.x,dz=incoming?incoming.z:attacker.z-victim.z,front=(Math.sin(victim.yaw)*dx+Math.cos(victim.yaw)*dz)/Math.max(.01,Math.hypot(dx,dz));if(front>.15){amount*=.4;event(s,"block",victim,{actorId:victim.id,targetId:attackerId});}}}
   const previousShield=victim.shield;const absorbed=Math.min(victim.shield,amount);victim.shield-=absorbed;victim.hp=Math.max(0,victim.hp-(amount-absorbed));victim.hurtAt=s.tick;if(previousShield>0&&victim.shield<=0)event(s,"shieldBreak",victim,{targetId:victim.id,actorId:attackerId});
   event(s,"hit",victim,{targetId:victim.id,actorId:attackerId,weapon});if(victim.hp>0)return;
   victim.alive=false;victim.deadAt=s.tick;victim.boosting=false;victim.guard=false;victim.vx=0;victim.vy=0;victim.vz=0;
@@ -200,6 +200,7 @@ function segmentHit(a,b,target,radius){
 }
 function tick(s){
   if(s.phase!=="playing")return;s.tick++;
+  const firing=[];
   for(const p of s.players){
     p.respawn=p.alive?0:Math.max(0,(50-(s.tick-p.deadAt))/10);if(!p.alive||!p.connected)continue;
     const input=s.tick-p.input.at<=10?p.input:neutral();p.yaw=input.at<0?p.yaw:input.yaw;p.pitch=input.at<0?p.pitch:clamp(input.pitch,-1.4,1.4);
@@ -211,8 +212,10 @@ function tick(s){
     for(const axis of ["x","y","z"]){const key="v"+axis;p[key]=(p[key]??0)+(desire[axis]-(p[key]??0))*response;if(Math.abs(p[key])<.04||input.at<0&&!dashing)p[key]=0;}
     move(p,p.vx*.1,p.vy*.1,p.vz*.1,obstacles(p.zone));
     if(p.zone==="space")p.ship={x:p.x,y:p.y,z:p.z,yaw:p.yaw};
-    p.energy=clamp(p.energy+(guard?-2:boost?-1.5:dashing?0:1.4),0,100);if(s.tick-p.hurtAt>30)p.shield=Math.min(p.maxShield,p.shield+.65);if(input.fire&&!guard&&!dashing)fire(s,p);if(s.phase!=="playing")return;
+    p.energy=clamp(p.energy+(guard?-2:boost?-1.5:dashing?0:1.4),0,100);if(s.tick-p.hurtAt>30)p.shield=Math.min(p.maxShield,p.shield+.65);if(input.fire&&!guard&&!dashing)firing.push(p);
   }
+  // Resolve every pilot's movement and paid defence before any attack this tick.
+  for(const p of firing){if(p.alive&&p.connected)fire(s,p);if(s.phase!=="playing")return;}
   for(const n of s.npcs){
     if(!n.alive){if(s.mode==="skirmish"&&s.tick-n.deadAt>=120){n.alive=true;n.hp=n.maxHp;n.phase=1;n.telegraph=null;n.shield=n.zone==="space"?25:n.role==="warden"?20:0;Object.assign(n,n.home);event(s,"spawn",n,{actorId:n.id});}continue;}
     if(n.role==="captain"&&n.phase!==2&&n.hp<=n.maxHp*.5){n.phase=2;event(s,"bossPhase",n,{actorId:n.id,phase:2,text:"Jarl overdrive · dodge the fan volley"});}

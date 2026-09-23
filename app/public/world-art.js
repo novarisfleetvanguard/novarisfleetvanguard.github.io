@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js?v=4';
+import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js?v=5';
 const TAU=Math.PI*2;
 const mat=(color,metal=.5,rough=.45)=>new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough});
 const emit=color=>new THREE.MeshBasicMaterial({color});
@@ -58,10 +58,10 @@ export function astralPlanet(world,env,zone){
 }
 export function astralInterior(world,env,zone){
  const hostile=zone==='dreadnought',bronze=mat(0x745943,.75,.4),rib=mat(0x1b2b3b,.8,.42),warm=emit(hostile?0xeaa677:0x72bbcb);
- const details=[],caps=[],lights=[];for(let z=-27;z<=27;z+=9){for(const s of[-1,1]){details.push({p:[s*13.4,3,z],s:[.42,6,.8]},{p:[s*13.4,6.1,z],s:[2,.45,1.3]});caps.push({p:[s*13.4,.4,z],s:[1.2,.8,1.3]});lights.push({p:[s*13.1,3.5,z],s:[.06,3,.12]});const arc=ring(env,9,.23,rib,[s*4.4,7,z],[0,Math.PI/2,0],Math.PI*.5);arc.rotation.z=s>0?Math.PI/2:0;}}
+ const details=[],caps=[],lights=[];for(let z=-27;z<=27;z+=9){for(const s of[-1,1]){details.push({p:[s*16.6,3,z],s:[.42,6,.8]},{p:[s*16.6,6.1,z],s:[2,.45,1.3]});caps.push({p:[s*16.6,.4,z],s:[1.2,.8,1.3]});lights.push({p:[s*16.3,3.5,z],s:[.06,3,.12]});const arc=ring(env,9,.23,rib,[s*4.4,7,z],[0,Math.PI/2,0],Math.PI*.5);arc.rotation.z=s>0?Math.PI/2:0;}}
  batch(env,new THREE.BoxGeometry(1,1,1),rib,details);batch(env,new THREE.BoxGeometry(1,1,1),bronze,caps);batch(env,new THREE.BoxGeometry(1,1,1),warm,lights);
  const keels=[];for(const x of[-7,0,7])keels.push({p:[x,9,0],s:[.4,.55,61]});batch(env,new THREE.BoxGeometry(1,1,1),bronze,keels);
- const reactor=new THREE.Group();reactor.position.set(0,4.8,28.5);env.add(reactor);ring(reactor,3.7,.2,bronze);ring(reactor,4.4,.08,warm);ring(reactor,3.4,.08,warm,[0,0,0],[.7,.4,.1]);aura(reactor,4.5,hostile?0xe07747:0x4cbbc7,[0,0,-.2],world.windUniform);
+ const reactor=new THREE.Group();reactor.position.set(0,4.8,31.3);env.add(reactor);ring(reactor,3.7,.2,bronze);ring(reactor,4.4,.08,warm);ring(reactor,3.4,.08,warm,[0,0,0],[.7,.4,.1]);aura(reactor,4.5,hostile?0xe07747:0x4cbbc7,[0,0,-.2],world.windUniform);
  const ceiling=new THREE.Group();env.add(ceiling);const constellations=[];for(let i=0;i<42;i++){const x=Math.sin(i*2.399)*10,z=-28+(i*7.7)%56;constellations.push({p:[x,9.5,z],s:[.035,.035,.035]});}batch(ceiling,new THREE.SphereGeometry(1,8,6),emit(0xaccbdd),constellations);
 }
 function surfaceMap(world,kind){
