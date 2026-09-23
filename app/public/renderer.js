@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { loadVanguardModel } from './model-loader.js?v=6';
-import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=6';
-import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=6';
-import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=6';
+import { loadVanguardModel } from './model-loader.js?v=7';
+import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=7';
+import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=7';
+import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=7';
 
 const V=THREE.Vector3, C=THREE.Color, TAU=Math.PI*2;
 const list=x=>Array.isArray(x)?x:Object.values(x||{});
@@ -360,7 +360,7 @@ export class WorldRenderer {
   }
   getTarget(state=this.state){
     if(!state||!this.self)return null;const me=this.self,yaw=finite(this.aimYaw,finite(me.yaw)),pitch=this.zone==='space'?finite(this.aimPitch,finite(me.pitch)):0,forward=new V(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));let best=null,bestScore=Infinity;
-    for(const e of [...list(state.npcs),...(state.mode==='skirmish'?list(state.players):[])]){if(!e.alive||e.id===state.you||e.zone!==this.zone)continue;const v=new V(e.x-me.x,this.zone==='space'?e.y-me.y:0,e.z-me.z),distance=v.length();if(distance<.01||distance>170)continue;const dot=v.normalize().dot(forward);if(dot<.96)continue;const origin=new V(me.x,me.y+(this.zone==='space'?0:1.25),me.z),end=new V(e.x,e.y+(this.zone==='space'?0:1.25),e.z);if(coverEntry(origin,end,state===this.state?this.zoneObstacles:state.obstacles,this.zone)<.999)continue;const score=(1-dot)*100+distance*.003;if(score<bestScore){best=e;bestScore=score;}}
+    for(const e of [...list(state.npcs),...(state.mode==='skirmish'?list(state.players):[])]){if(!e.alive||e.connected===false||e.id===state.you||e.zone!==this.zone)continue;const v=new V(e.x-me.x,this.zone==='space'?e.y-me.y:0,e.z-me.z),distance=v.length();if(distance<.01||distance>170)continue;const dot=v.normalize().dot(forward);if(dot<.96)continue;const origin=new V(me.x,me.y+(this.zone==='space'?0:1.25),me.z),end=new V(e.x,e.y+(this.zone==='space'?0:1.25),e.z);if(coverEntry(origin,end,state===this.state?this.zoneObstacles:state.obstacles,this.zone)<.999)continue;const score=(1-dot)*100+distance*.003;if(score<bestScore){best=e;bestScore=score;}}
     return best;
   }
   disposeUnique(root){const gs=new Set(),ms=new Set();root.traverse(o=>{if(o.isInstancedMesh)o.dispose();if(o.geometry&&!this.sharedGeometries?.has(o.geometry))gs.add(o.geometry);for(const m of(Array.isArray(o.material)?o.material:[o.material]))if(m&&!this.sharedMaterials?.has(m))ms.add(m);});gs.forEach(g=>g.dispose());ms.forEach(m=>{if(m.map?.userData.novarisLabel)m.map.dispose();m.dispose();});}
