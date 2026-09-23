@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {loadVanguardModel} from './model-loader.js?v=5';
+import {loadVanguardModel} from './model-loader.js?v=6';
 
 // The fleet's astronomical instrument: a live, spatial frontispiece, never a video loop.
 export class AstralFrontispiece {

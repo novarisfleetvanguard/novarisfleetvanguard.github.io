@@ -63,3 +63,5 @@ The game needs a browser with WebGL support. Physical-device performance varies;
 `node scripts/check-browser-loading.cjs` checks a pending audio activation, a stalled model download and a malformed model response. Each failure must expose an explicit retry, and a fresh successful request must reach the command menu. Model downloads have a 30-second deadline.
 
 `node scripts/check-browser-keyboard.cjs` checks keyboard launch, firing after arrival and notice dismissal, and focus inside the manual. `BROWSER` selects Chromium, Firefox or WebKit; install the matching Playwright browser first.
+
+`node scripts/check-browser-interruption.cjs` exercises real boarding, sabotage, reconstruction and replay across deliberate connection loss. It verifies that unsent choices stay open for an explicit retry and that resumed play has neutral controls. It uses the same browser, URL and report environment variables as the other browser checks.

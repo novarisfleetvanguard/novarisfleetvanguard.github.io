@@ -1,9 +1,9 @@
-import {AstralFrontispiece} from './astral.js?v=5';
-import {ARCHIVE} from './archive.js?v=5';
-import {WorldRenderer} from './renderer.js?v=5';
-import {AudioEngine} from './audio.js?v=5';
-import {playIntro} from './intro.js?v=5';
-import {CHAPTERS} from './manual.js?v=5';
+import {AstralFrontispiece} from './astral.js?v=6';
+import {ARCHIVE} from './archive.js?v=6';
+import {WorldRenderer} from './renderer.js?v=6';
+import {AudioEngine} from './audio.js?v=6';
+import {playIntro} from './intro.js?v=6';
+import {CHAPTERS} from './manual.js?v=6';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,7 +28,7 @@ const self=()=>view?.players?.find(p=>p.id===you);
 const canPlay=()=>view?.phase==='playing'&&self()?.alive&&!modal.open&&activePanel==='hud'&&!document.hidden;
 try{astral=new AstralFrontispiece($('astral'),{quality:settings.quality,reducedMotion:settings.reduced});astral.load().catch(e=>console.warn('Vessel preview unavailable',e));}catch(e){console.warn('Astral scene unavailable',e);}
 canvas.style.visibility='hidden';
-function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=5';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
+function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=6';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
 updateBrandMotion();
 function saveSettings(){updateBrandMotion();try{localStorage.setItem('novaris-settings',JSON.stringify(settings));}catch{}audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);world?.setQuality?.(settings.quality);world?.setReducedMotion?.(settings.reduced);astral?.setReducedMotion(settings.reduced);astral?.setQuality?.(settings.quality);audio.setReducedMotion?.(settings.reduced);}
 function notice(text){if(modal.open){const output=modalKind==='interact'?$('interact-result'):$('modal-notice');if(output){output.textContent=text;output.classList.remove('hidden');return;}}$('toast-text').textContent=text;$('toast').classList.remove('hidden');}
@@ -55,7 +55,7 @@ $('manual-next').onclick=()=>{if(manualPage===CHAPTERS.length-1){try{localStorag
 ['boot-settings','menu-settings'].forEach(id=>$(id).onclick=settingsModal);
 ['menu-guide','lobby-guide','hud-guide'].forEach(id=>$(id).onclick=()=>manual());
 function loadingStage(n){['load-model','load-worlds','load-ready'].forEach((id,i)=>{const el=$(id);el.classList.toggle('done',i<n);el.classList.toggle('active',i===n);el.querySelector('i').textContent=i<n?'COMPLETE':i===n?'ASSEMBLING':'WAITING';});}
-async function loadWorld(){if(loaded)return;if(loadPromise)return loadPromise;loadPromise=(async()=>{world?.dispose();world=null;world=new WorldRenderer(canvas,{quality:settings.quality,reducedMotion:settings.reduced});await world.load(progress=>{const stage=progress.fraction<.55?0:progress.fraction<1?1:2;loadingStage(stage);$('load-status').textContent=['Forging crescent hulls and ivory armor…','Charting Ember Reach and Veil Garden…','The fleet awaits your command.'][stage];});loaded=true;})();try{await loadPromise;}catch(e){world?.dispose();world=null;loaded=false;loadPromise=null;throw e;}}
+async function loadWorld(){if(loaded)return;if(loadPromise)return loadPromise;loadPromise=(async()=>{void astral?.load().catch(e=>console.warn('Vessel preview unavailable',e));world?.dispose();world=null;world=new WorldRenderer(canvas,{quality:settings.quality,reducedMotion:settings.reduced});await world.load(progress=>{const stage=progress.fraction<.55?0:progress.fraction<1?1:2;loadingStage(stage);$('load-status').textContent=['Forging crescent hulls and ivory armor…','Charting Ember Reach and Veil Garden…','The fleet awaits your command.'][stage];});loaded=true;})();try{await loadPromise;}catch(e){world?.dispose();world=null;loaded=false;loadPromise=null;throw e;}}
 async function finishIntro(){if(finishingIntro)return;finishingIntro=true;introController?.stop();panel('loading');audio.setScene('menu');loadingStage(0);$('load-retry').classList.add('hidden');try{await loadWorld();loadingStage(3);$('load-status').textContent='The Vanguard is ready. Continue when you choose.';$('load-enter').classList.remove('hidden');}catch(error){console.error(error);$('load-status').textContent=/webgl|graphics context/i.test(String(error?.message))?'This browser could not start 3D graphics. Enable hardware acceleration or try an up-to-date browser, then retry.':'The armory could not load. Check your connection, then retry.';$('load-retry').classList.remove('hidden');}finally{finishingIntro=false;}}
 function beginIntro(){introController?.stop();panel('intro');audio.setScene('intro');introController=playIntro($('intro-canvas'),{onComplete:finishIntro,reducedMotion:settings.reduced,audio});}
 $('enter').onclick=()=>{if(booted)return;booted=true;void audio.unlock();beginIntro();};
@@ -71,8 +71,10 @@ function code(){const a=new Uint8Array(6);crypto.getRandomValues(a);return Array
 $('create-room').onclick=()=>connect(code());
 $('join-room').onclick=()=>{const value=$('room-input').value.trim().toUpperCase();if(!/^[A-Z0-9_-]{1,12}$/.test(value)){notice('Use the room code from your host (letters and numbers).');return;}connect(value);};
 $('room-input').onkeydown=e=>{if(e.key==='Enter')$('join-room').click();};
-function send(message){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify(message));}
-function action(a){send({type:'action',action:a});}
+function send(message){if(ws?.readyState!==WebSocket.OPEN)return false;ws.send(JSON.stringify(message));return true;}
+function connectionNotice(){notice('Connection unavailable. Wait for your crew link to return, then choose this action again.');}
+function action(a){const sent=send({type:'action',action:a});if(!sent&&a.type!=='input')connectionNotice();return sent;}
+function requestReset(){if(send({type:'reset'}))closeModal();else connectionNotice();}
 function connect(value,reconnecting=false){
  clearTimeout(reconnectTimer);releaseInput();const previous=ws;ws=null;previous?.close();room=value;intentionalClose=false;const name=$('callsign').value.trim().slice(0,18)||'Drifter';
  try{localStorage.setItem('novaris-name',name);}catch{}
@@ -140,7 +142,7 @@ function nearInteractions(){const p=self();if(!p)return[];return(view.interactab
 function interactions(){
  const p=self();if(!p)return;if(!p.alive){deathModal();return;}const near=nearInteractions();
  openModal('interact','VANGUARD / INTERACTION','<h2>Choose your next move.</h2><p>'+ (near.length?'These actions are within reach. Select one explicitly.':'No destination is in reach. Use the navigation map to find a landing gate, core, repair station or rival ship.')+'</p><div id="interact-list">'+near.map(t=>'<button class="interact-option" data-target="'+esc(t.id)+'" '+(!t.available?'disabled':'')+'><b>'+esc(t.label)+'</b><span>'+(t.available?'SELECT →':'LOCKED')+'</span></button>').join('')+'</div><p id="interact-result" class="muted" role="status">This panel stays open until you close it.</p><button id="interact-map" class="secondary">NAVIGATION MAP</button><button id="interact-done" class="primary">RETURN TO ACTION</button>');
- body.querySelectorAll('[data-target]').forEach(b=>b.onclick=()=>{action({type:'interact',targetId:b.dataset.target});$('interact-result').textContent='Request sent. Close this panel to resume control.';b.disabled=true;});
+ body.querySelectorAll('[data-target]').forEach(b=>b.onclick=()=>{if(!action({type:'interact',targetId:b.dataset.target}))return;$('interact-result').textContent='Request sent. Close this panel to resume control.';b.disabled=true;});
  $('interact-map').onclick=mapModal;$('interact-done').onclick=closeModal;
 }
 $('interact').onclick=interactions;
@@ -153,12 +155,12 @@ $('hud-map').onclick=mapModal;
 function pauseModal(){openModal('pause','VANGUARD / FLIGHT MENU','<h2>Your next command.</h2><p class="warning">This is a shared world. Combat continues while your personal menu is open.</p><button class="primary" id="resume">RESUME</button><button class="secondary" id="pause-manual">FIELD MANUAL</button><button class="secondary" id="pause-map">NAVIGATION</button><button class="secondary" id="pause-settings">SETTINGS</button>'+(view?.phase==='over'?'<button class="secondary" id="show-results">RESULTS</button>':'')+'<h3>Room '+esc(room)+'</h3><p>Share this room code to invite your crew.</p>'+(you===view?.hostId?'<button class="secondary" id="reset-confirm">RETURN CREW TO LOBBY</button>':'')+'<button class="secondary" id="leave-game">LEAVE ROOM</button>');
  $('resume').onclick=closeModal;$('pause-manual').onclick=()=>manual();$('pause-map').onclick=mapModal;$('pause-settings').onclick=settingsModal;$('leave-game').onclick=leave;
  if($('show-results'))$('show-results').onclick=resultModal;
- if($('reset-confirm'))$('reset-confirm').onclick=()=>{openModal('reset','COMMANDER / RETURN TO LOBBY','<h2>End this sortie?</h2><p>This returns everyone to the launch bay and clears the current mission progress. The next mission starts only when you choose.</p><button id="do-reset" class="primary">RETURN TO LOBBY</button><button id="cancel-reset" class="secondary">KEEP PLAYING</button>');$('do-reset').onclick=()=>{send({type:'reset'});closeModal();};$('cancel-reset').onclick=closeModal;};
+ if($('reset-confirm'))$('reset-confirm').onclick=()=>{openModal('reset','COMMANDER / RETURN TO LOBBY','<h2>End this sortie?</h2><p>This returns everyone to the launch bay and clears the current mission progress. The next mission starts only when you choose.</p><button id="do-reset" class="primary">RETURN TO LOBBY</button><button id="cancel-reset" class="secondary">KEEP PLAYING</button>');$('do-reset').onclick=requestReset;$('cancel-reset').onclick=closeModal;};
 }
 $('hud-menu').onclick=pauseModal;
-function deathModal(){openModal('death','VANGUARD / SIGNAL LOST','<h2>Your oath endures.</h2><p>Your suit reconstruction will become available shortly. Your score stays with you. You choose when to return.</p><button id="respawn" class="primary">RECONSTRUCT</button><button id="death-map" class="secondary">FIELD MANUAL</button>');$('respawn').onclick=()=>{action({type:'respawn'});closeModal();};$('death-map').onclick=()=>manual(8);updateRespawn();}
+function deathModal(){openModal('death','VANGUARD / SIGNAL LOST','<h2>Your oath endures.</h2><p>Your suit reconstruction will become available shortly. Your score stays with you. You choose when to return.</p><button id="respawn" class="primary">RECONSTRUCT</button><button id="death-map" class="secondary">FIELD MANUAL</button>');$('respawn').onclick=()=>{if(action({type:'respawn'}))closeModal();};$('death-map').onclick=()=>manual(8);updateRespawn();}
 function updateRespawn(){const p=self();if(!$('respawn')||!p)return;$('respawn').disabled=p.respawn>0;$('respawn').textContent=p.respawn>0?'RECONSTRUCT IN '+Math.ceil(p.respawn)+'s':'RECONSTRUCT & REJOIN';}
-function resultModal(){const r=view?.result;if(!r)return;audio.setScene('victory');openModal('result','SORTIE / COMPLETE','<h2>'+esc(r.title||'Mission complete')+'</h2><p>'+esc(r.reason||'The stars remember your vanguard.')+'</p>'+[...view.players].sort((a,b)=>b.score-a.score).map(p=>'<div class="score-row"><b>'+esc(p.name)+'</b><span>'+p.kills+' eliminations · '+p.deaths+' losses · '+p.score+' score</span></div>').join('')+(you===view.hostId?'<button id="rematch" class="primary">RETURN TO LOBBY</button>':'<p>Your commander can return the crew to the lobby for another mission.</p>')+'<button id="result-close" class="secondary">STAY HERE</button>');if($('rematch'))$('rematch').onclick=()=>{send({type:'reset'});closeModal();};$('result-close').onclick=closeModal;}
+function resultModal(){const r=view?.result;if(!r)return;audio.setScene('victory');openModal('result','SORTIE / COMPLETE','<h2>'+esc(r.title||'Mission complete')+'</h2><p>'+esc(r.reason||'The stars remember your vanguard.')+'</p>'+[...view.players].sort((a,b)=>b.score-a.score).map(p=>'<div class="score-row"><b>'+esc(p.name)+'</b><span>'+p.kills+' eliminations · '+p.deaths+' losses · '+p.score+' score</span></div>').join('')+(you===view.hostId?'<button id="rematch" class="primary">RETURN TO LOBBY</button>':'<p>Your commander can return the crew to the lobby for another mission.</p>')+'<button id="result-close" class="secondary">STAY HERE</button>');if($('rematch'))$('rematch').onclick=requestReset;$('result-close').onclick=closeModal;}
 function sendInput(neutral=false){
  if(!view||view.phase!=='playing')return;const p=self();if(!p||!p.alive)return;const live=!neutral&&canPlay();let forward=0,right=0,vertical=0;
  if(live){forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS'));right=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));vertical=Number(keys.has('KeyR'))-Number(keys.has('KeyF'));}

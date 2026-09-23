@@ -167,4 +167,27 @@ describe("authoritative simulation",()=>{
     let s=started("skirmish");s.npcs=[];s.tick=130;Object.assign(s.players[0],{zone:"ship:a",x:0,y:0,z:0,energy:2});Object.assign(s.players[1],{zone:"ship:a",x:0,y:0,z:8});s=act(s,"a",{...input,guard:true});s=act(s,"b",{...input,yaw:Math.PI,fire:true});s=advance(s);expect(s.players[0]).toMatchObject({guard:true,energy:0});expect(s.players[0].shield).toBeCloseTo(62.8);s=advance(s);expect(s.players[0].guard).toBe(false);
   });
 
+  it("cancels active dodge on disconnect or identity handoff without refunding its cooldown",()=>{
+    for(const disconnected of [false,true]){let s=started();s.npcs=[];s=act(s,"a",{type:"interact",targetId:"own-ship:a"});s=act(s,"a",{type:"dash"});const before={z:s.players[0].z,energy:s.players[0].energy,dashAt:s.players[0].dashAt};
+      if(disconnected)s=rules.applyAction(s,"@system",{type:"disconnect",id:"a"});s=rules.applyAction(s,"@system",{type:"reconnect",id:"a"});s=advance(s);const p=s.players[0];expect(p.z).toBe(before.z);expect(p.dashAt).toBe(before.dashAt);expect(p.energy).toBeCloseTo(before.energy+1.4);expect((rules.viewFor(s,"a") as any).players[0].dashing).toBe(false);expect(rules.validateAction(s,"a",{type:"dash"}).ok).toBe(false);
+    }
+  });
+  it("expires movement, fire, boost and brace on the first stale input tick",()=>{
+    for(const held of ["fire","boost","guard"]){let s=started();s.npcs=[];s=act(s,"a",{...input,mx:1,[held]:true});s=advance(s,10);const atBoundary=s.players[0];expect(atBoundary.vx).not.toBe(0);expect(held==="fire"?atBoundary.shotAt===10:held==="boost"?atBoundary.boosting:atBoundary.guard).toBe(true);const shots=s.projectileSeq;s=advance(s);expect(s.players[0]).toMatchObject({x:atBoundary.x,vx:0,boosting:false,guard:false});s=advance(s,10);expect(s.projectileSeq).toBe(shots);expect(s.players[0].x).toBe(atBoundary.x);}
+  });
+  it("clears held combat controls and active dodge when leaving a ship",()=>{
+    let s=started();s.npcs=[];s=act(s,"a",{type:"interact",targetId:"own-ship:a"});s=advance(s,8);s=act(s,"a",{...input,mx:1,fire:true,boost:true,guard:true});s=act(s,"a",{type:"dash"});const cooldown=s.players[0].dashAt;s=act(s,"a",{type:"interact",targetId:"exit:a"});const location={x:s.players[0].x,y:s.players[0].y,z:s.players[0].z};s=advance(s,4);expect(s.players[0]).toMatchObject({...location,zone:"space",boosting:false,guard:false,dashAt:cooldown});expect(s.projectiles).toEqual([]);expect((rules.viewFor(s,"a") as any).players[0].dashing).toBe(false);
+  });
+
+  it("orders lethal damage and ship entry without letting a defeated pilot escape",()=>{
+    for(const travelFirst of [false,true]){let s=started("skirmish");s.npcs=[];s.tick=130;const a=s.players[0],b=s.players[1];Object.assign(a,{hp:18,shield:0,hurtAt:130});Object.assign(b,{x:a.x,y:a.y,z:a.z+8});s=act(s,"b",{...input,yaw:Math.PI,fire:true});
+      if(travelFirst)s=act(s,"a",{type:"interact",targetId:"own-ship:a"});s=advance(s);expect(s.players[0].alive).toBe(travelFirst);expect(s.players[0].zone).toBe(travelFirst?"ship:a":"space");if(!travelFirst){for(const action of [{type:"interact",targetId:"own-ship:a"},{type:"dash"},input,{type:"respawn"}])expect(rules.validateAction(s,"a",action).ok).toBe(false);s=advance(s,50);s=act(s,"a",{type:"respawn"});expect(s.players[0]).toMatchObject({alive:true,hp:100,input:{fire:false,boost:false,guard:false}});}
+    }
+  });
+  it("commits one terminal result when a final core capture races a lethal shot",()=>{
+    for(const captureFirst of [false,true]){let s=started("skirmish");s.npcs=[];s.tick=130;Object.assign(s.players[0],{zone:"ember",x:0,y:0,z:28,hp:18,shield:0,hurtAt:130,score:11});Object.assign(s.players[1],{zone:"ember",x:0,y:0,z:36,score:11});s=act(s,"b",{...input,yaw:Math.PI,fire:true});
+      if(captureFirst)s=act(s,"a",{type:"interact",targetId:"core:ember"});s=advance(s);expect(s.phase).toBe("over");expect(s.result.winner).toBe(captureFirst?"a":"b");expect(s.events.filter((e:any)=>e.type==="victory")).toHaveLength(1);expect(s.projectiles).toEqual([]);expect(rules.validateAction(s,"a",{type:"interact",targetId:"core:ember"}).ok).toBe(false);expect(advance(s,10)).toEqual(s);
+    }
+  });
+
 });

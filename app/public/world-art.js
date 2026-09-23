@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js?v=5';
+import {mergeGeometries} from './vendor/utils/BufferGeometryUtils.js?v=6';
 const TAU=Math.PI*2;
 const mat=(color,metal=.5,rough=.45)=>new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough});
 const emit=color=>new THREE.MeshBasicMaterial({color});

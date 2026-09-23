@@ -1,4 +1,4 @@
-import {GLTFLoader} from './vendor/GLTFLoader.js?v=5';
+import {GLTFLoader} from './vendor/GLTFLoader.js?v=6';
 
 // Share only an active download. A failed or completed request cannot trap retry.
 let pendingDownload=null;
@@ -7,7 +7,7 @@ function download(){
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),30000);
   try{
-   const response=await fetch(new URL('./assets/novaris-vanguard.glb?v=5',import.meta.url),{signal:controller.signal});
+   const response=await fetch(new URL('./assets/novaris-vanguard.glb?v=6',import.meta.url),{signal:controller.signal});
    if(!response.ok)throw new Error('Model download failed ('+response.status+')');
    return await response.arrayBuffer();
   }catch(error){

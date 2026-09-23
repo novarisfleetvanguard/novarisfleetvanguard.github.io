@@ -255,7 +255,7 @@ export function applyAction(state,id,a){
   if(id==="@system"){
     if(a.type==="tick")tick(s);
     if(a.type==="add"&&!s.players.some(p=>p.id===a.id)&&s.players.length<meta.maxPlayers){const p=player(a.id,s.players.length,a.name);p.spawnAt=s.tick;if(s.phase==="playing")p.launchUntil=s.tick+100;s.players.push(p);if(!s.players.some(q=>q.id===s.hostId&&q.connected))s.hostId=a.id;}
-    if(a.type==="disconnect"||a.type==="reconnect"){const p=s.players.find(p=>p.id===a.id);if(p){p.connected=a.type==="reconnect";p.input=neutral();p.boosting=false;p.guard=false;p.vx=0;p.vy=0;p.vz=0;}if(!s.players.find(p=>p.id===s.hostId)?.connected)s.hostId=s.players.find(p=>p.connected)?.id||s.hostId;}
+    if(a.type==="disconnect"||a.type==="reconnect"){const p=s.players.find(p=>p.id===a.id);if(p){p.connected=a.type==="reconnect";p.input=neutral();p.boosting=false;p.guard=false;p.vx=0;p.vy=0;p.vz=0;p.dashUntil=0;}if(!s.players.find(p=>p.id===s.hostId)?.connected)s.hostId=s.players.find(p=>p.connected)?.id||s.hostId;}
     if(a.type==="reset"){const fresh=setup(s.players.map(p=>p.id));fresh.mode=s.mode;fresh.objective.text=s.objective.text;fresh.hostId=s.hostId;fresh.eventSeq=s.eventSeq;for(const p of fresh.players){const prior=s.players.find(q=>q.id===p.id);p.name=prior.name;p.connected=prior.connected;}return fresh;}
     return s;
   }
