@@ -1,0 +1,13 @@
+Novaris: Fleet Vanguard
+A Beautiful Cosmic Showcase: Dontaeus A. Meek
+
+Original world, gameplay, intro, procedural score, effects and Blender asset kit created for this project. The visual creator seal replaces the period after A in the opening credit.
+
+3D runtime: Three.js r170, MIT license (vendor/THREE-LICENSE.txt).
+Key artwork and nebula artwork created with Higgsfield. Editable 3D models authored with Blender through Higgsfield 3D Jutsu.
+
+Desktop and touch controls. No account is required to play.
+
+Astral revision: original Blender model kit revision 3; procedural astronomical instrument, authored environment and combat visuals, nine-second ink-cut title sequence, Higgsfield celestial atlas and launch art. Original WebAudio score, instruments and effects.
+
+Cormorant Garamond and Manrope are bundled under the SIL Open Font License. See assets/fonts/*-OFL.txt.

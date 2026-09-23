@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-labelledby="creator-seal-title">
+  <title id="creator-seal-title">Novaris creator seal: an orbital fleet crest and rising star, replacing the period after A in Dontaeus A. Meek</title>
+  <g stroke="#dba764" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="32" cy="33" rx="27" ry="13" transform="rotate(-22.918 32 33)"/>
+    <path d="M13 24 21 27H43L51 24" stroke-width="3.1"/>
+    <path d="M20 29V46L32 55 44 46V29M17 34H47"/>
+  </g>
+  <path d="M32 8 35 18 43 21 35 24 32 32 29 24 21 21 29 18Z" fill="#eee6d6"/>
+  <path d="M26 39 32 36 38 39 32 45Z" fill="#eee6d6"/>
+</svg>

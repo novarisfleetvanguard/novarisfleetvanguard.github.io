@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="none" role="img" aria-labelledby="title desc">
+ <title id="title">Novaris Vanguard sword and star pistol</title>
+ <desc id="desc">A complete curved ivory sword with a wrapped hilt stands beside a complete cyan-powered space pistol, within a gold celestial orbit.</desc>
+
+ <style>
+  #celestial-orbit{transform-origin:320px 320px;animation:orbit-turn 30s linear infinite}
+  .inner-orbit{transform-origin:320px 320px;animation:orbit-back 22s linear infinite}
+  .orbit-lights{transform-origin:320px 320px;animation:orbit-turn 7.5s linear infinite}
+  .sword-drift{transform-origin:230px 315px;animation:sword-float 5.8s ease-in-out infinite}
+  .pistol-drift{transform-origin:430px 350px;animation:pistol-float 4.7s ease-in-out infinite}
+  .blade-sweep{animation:blade-sweep 3.8s ease-in-out infinite}
+  .blade-trace{stroke-dasharray:84 740;animation:trace-light 4.3s linear infinite}
+  .reactor-pulse{animation:reactor-breathe 1.9s ease-in-out infinite}
+  .reactor-flow{stroke-dasharray:12 31;animation:reactor-flow 1.3s linear infinite}
+  @keyframes orbit-turn{to{transform:rotate(360deg)}}
+  @keyframes orbit-back{to{transform:rotate(-360deg)}}
+  @keyframes sword-float{0%,100%{transform:translate(-2px,4px) rotate(-.7deg)}50%{transform:translate(2px,-5px) rotate(.7deg)}}
+  @keyframes pistol-float{0%,100%{transform:translate(2px,-4px) rotate(.8deg)}50%{transform:translate(-2px,5px) rotate(-.8deg)}}
+  @keyframes blade-sweep{0%,12%{transform:translateY(510px);opacity:0}22%{opacity:.9}68%{opacity:.9}86%,100%{transform:translateY(-140px);opacity:0}}
+  @keyframes trace-light{to{stroke-dashoffset:-824}}
+  @keyframes reactor-breathe{0%,100%{opacity:.15}50%{opacity:.65}}
+  @keyframes reactor-flow{to{stroke-dashoffset:-43}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}.blade-sweep,.blade-trace,.reactor-pulse,.reactor-flow{display:none}}
+ </style>
+ <defs>
+  <linearGradient id="gold" x1="120" y1="80" x2="470" y2="570" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0b8"/><stop offset=".38" stop-color="#dabb79"/><stop offset=".7" stop-color="#957047"/><stop offset="1" stop-color="#f5dc9b"/></linearGradient>
+  <linearGradient id="steel" x1="165" y1="300" x2="323" y2="363" gradientUnits="userSpaceOnUse"><stop stop-color="#fff7df"/><stop offset=".48" stop-color="#e5e7d8"/><stop offset=".51" stop-color="#94b7bd"/><stop offset="1" stop-color="#e5f3ef"/></linearGradient>
+  <linearGradient id="armor" x1="360" y1="280" x2="505" y2="390" gradientUnits="userSpaceOnUse"><stop stop-color="#f6efdc"/><stop offset=".6" stop-color="#b8c7c6"/><stop offset="1" stop-color="#7f969c"/></linearGradient>
+  <linearGradient id="core" x1="372" y1="304" x2="513" y2="325" gradientUnits="userSpaceOnUse"><stop stop-color="#2b768b"/><stop offset=".38" stop-color="#aefff1"/><stop offset="1" stop-color="#69d8e6"/></linearGradient>
+  <clipPath id="blade-clip"><path d="M150 439C212 343 278 232 351 102L379 78C349 167 278 306 177 456Z"/></clipPath>
+  <linearGradient id="blade-glint" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffde9" stop-opacity="0"/><stop offset=".5" stop-color="#fffde9" stop-opacity=".95"/><stop offset="1" stop-color="#adffff" stop-opacity="0"/></linearGradient>
+ </defs>
+ <g id="celestial-orbit" stroke="url(#gold)" stroke-linecap="round">
+  <path d="M92 359A234 234 0 0 1 252 95M385 96A234 234 0 0 1 550 387M518 456A234 234 0 0 1 267 547" stroke-width="3"/>
+  <path d="M104 367A222 222 0 0 1 250 108M395 113A222 222 0 0 1 536 391M505 452A222 222 0 0 1 273 535" stroke-width="1" opacity=".5"/>
+  <path d="M70 310H85M553 310H570M317 553V570M151 142L162 153M474 143L485 132M476 478L487 489" stroke-width="3"/>
+  <path d="M318 49L325 68L344 75L325 82L318 101L311 82L292 75L311 68Z" fill="url(#gold)" stroke="none"/>
+  <path d="M557 418L561 429L572 433L561 437L557 448L553 437L542 433L553 429Z" fill="#a9e5e7" stroke="none"/>
+  <circle cx="216" cy="524" r="3" fill="#a9e5e7" stroke="none"/>
+ </g>
+ <g class="inner-orbit" stroke="#dabb79" stroke-width="1.2" opacity=".24"><circle cx="320" cy="320" r="213" stroke-dasharray="2 31"/><path d="M320 100V119M320 521V540M100 320H119M521 320H540" stroke-width="2"/></g>
+ <g class="orbit-lights"><circle cx="320" cy="86" r="4" fill="#b5fff3"/><circle cx="320" cy="86" r="9" stroke="#93e8e6" stroke-opacity=".24" stroke-width="2"/><circle cx="320" cy="554" r="2.5" fill="#e2c995"/></g>
+ <g class="sword-drift"><g id="whole-sword" stroke-linejoin="round">
+  <!-- The blade and hilt remain separate from the pistol silhouette. -->
+  <path d="M150 439C212 343 278 232 351 102L379 78C349 167 278 306 177 456Z" fill="#07121c" stroke="#07121c" stroke-width="13"/>
+  <path d="M150 439C212 343 278 232 351 102L379 78C349 167 278 306 177 456Z" fill="url(#steel)" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M162 447C240 328 309 210 372 93C338 191 270 320 177 456Z" fill="#f3f1df"/>
+  <path d="M158 431C223 331 286 226 350 114" stroke="#3c6672" stroke-width="3"/>
+  <path d="M169 439C237 335 299 225 362 111" stroke="#edf7ed" stroke-width="2"/>
+  <g clip-path="url(#blade-clip)"><path class="blade-sweep" d="M110 0H405V140H110Z" fill="url(#blade-glint)"/></g>
+  <path class="blade-trace" d="M166 443C239 329 306 212 367 102" stroke="#fff7cf" stroke-width="2.4"/>
+  <path d="M156 424L183 440L173 457L146 442Z" fill="url(#gold)" stroke="#443c33" stroke-width="2"/>
+  <path d="M133 450L158 465L111 541L86 526Z" fill="#152434" stroke="#07121c" stroke-width="10"/>
+  <path d="M133 450L158 465L111 541L86 526Z" fill="#182632" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M129 460L148 479L114 483L133 501L100 506L119 525M147 469L116 471L135 490L103 494L122 513L91 521" stroke="#ae8564" stroke-width="4"/>
+  <path d="M125 436Q150 435 178 460L192 455L188 467Q178 484 164 474L119 445Z" fill="url(#gold)" stroke="#07121c" stroke-width="4"/>
+  <path d="M126 440L171 469" stroke="#fff1bf" stroke-width="2"/>
+  <path d="M86 521L116 539L109 551L79 533Z" fill="url(#gold)" stroke="#07121c" stroke-width="4"/>
+  <path d="M96 534L101 537" stroke="#dcffff" stroke-width="4"/>
+ </g>
+ </g><g class="pistol-drift"><g id="whole-space-pistol" transform="rotate(-24 442 352)" stroke-linejoin="round">
+  <!-- Complete muzzle, receiver, trigger bow and grip; no cropped ends. -->
+  <path d="M332 295L353 276H425L440 285H521L551 298V338L527 351H441L416 365L402 455L385 474H344L340 455L358 367L341 351H328Z" fill="#0b1927" stroke="#07121c" stroke-width="13"/>
+  <path d="M345 351L378 349L399 366L383 457L346 457L364 371Z" fill="#132536" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M361 383L390 392M357 401L386 410M353 419L382 428M350 437L378 446" stroke="#a88354" stroke-width="4"/>
+  <path d="M344 453H386L382 470H345Z" fill="url(#gold)" stroke="#07121c" stroke-width="3"/>
+  <path d="M392 351H438V374Q436 389 423 390H394" stroke="url(#gold)" stroke-width="6"/>
+  <path d="M414 354L411 367L418 374" stroke="#ebdebb" stroke-width="4"/>
+  <path d="M332 295L353 276H425L440 285H520L551 298V338L527 351H441L416 365H367L341 351H328Z" fill="#142a38" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M346 297L360 285H423L436 295H514L528 302V313H365L345 323Z" fill="url(#armor)"/>
+  <path d="M344 334L369 318H519L532 329L520 339H438L414 355H373Z" fill="#345060"/>
+  <path d="M377 303H507V322H377L367 312Z" fill="url(#core)" stroke="#091722" stroke-width="4"/>
+  <path class="reactor-pulse" d="M377 305H505V320H377L369 312Z" fill="#caffef"/>
+  <path class="reactor-flow" d="M378 312H505" stroke="#edfff3" stroke-width="3"/>
+  <path d="M392 305V320M410 305V320M428 305V320M446 305V320M464 305V320M482 305V320" stroke="#163846" stroke-width="4"/>
+  <path d="M516 295L550 302V334L530 343H516Z" fill="#0b1a28" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M537 307V331" stroke="#b5fff3" stroke-width="5"/>
+  <path d="M336 288L347 269H369V283M479 285V274H498L506 286" fill="#142a38" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M340 304V331M443 341H494" stroke="#d4b778" stroke-width="3"/>
+  <path d="M372 336L384 328L396 336L384 345Z" fill="url(#gold)"/>
+  <path d="M407 335H423" stroke="#a8e9e5" stroke-width="3"/>
+  <circle cx="353" cy="343" r="3" fill="#f0d398"/>
+ </g>
+ </g>
+</svg>

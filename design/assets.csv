@@ -1,0 +1,8 @@
+id,role,type,description,size/ratio,style line ref,source
+blender-kit,ships marine enemies weapons flagship interior,glb,authored engraved feudal celestial armory,portable PBR,style-02,generate
+astral-frontispiece,boot loading menu lobby,threejs,animated eclipse and orbital astronomical instrument with playable fighter,adaptive landscape portrait,style-02,generate
+celestial-atlas,menu deep background,image,broken bronze orbital empire above a violet planet,16:9,style-02,generate
+cover,launch artwork,image,ivory shogun star knight beneath the great broken orrery,3:2,style-02,generate
+intro,opening sequence,canvas,ink engravings become an astral fleet eclipse and creator credit,9 seconds,reference-01,reference_media[0]
+music,one original score per zone,webaudio,layered plucked strings taiko bowlike pads and cosmic motifs,stereo,style-02,generate
+sfx,all action feedback,webaudio,spatial weapons continuous engine boots impacts shields dodge brace interface travel,stereo,style-02,generate
