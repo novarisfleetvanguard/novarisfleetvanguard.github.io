@@ -1,9 +1,9 @@
-import {AstralFrontispiece} from './astral.js?v=8';
-import {ARCHIVE} from './archive.js?v=8';
-import {WorldRenderer} from './renderer.js?v=8';
-import {AudioEngine} from './audio.js?v=8';
-import {playIntro} from './intro.js?v=8';
-import {CHAPTERS} from './manual.js?v=8';
+import {AstralFrontispiece} from './astral.js?v=9';
+import {ARCHIVE} from './archive.js?v=9';
+import {WorldRenderer} from './renderer.js?v=9';
+import {AudioEngine} from './audio.js?v=9';
+import {playIntro} from './intro.js?v=9';
+import {CHAPTERS} from './manual.js?v=9';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,6 +11,17 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // Preserve the hit text node while a browser is completing a pointer click.
 function setText(element,value){const text=String(value);if(element.textContent===text)return;if(element.childNodes.length===1&&element.firstChild.nodeType===Node.TEXT_NODE)element.firstChild.nodeValue=text;else element.textContent=text;}
 let lastCrewMarkup='';
+function updateCrew(markup){
+ const list=$('crew-list'),template=document.createElement('template');template.innerHTML=markup;
+ const previous=new Map(Array.from(list.children,row=>[row.dataset.pilotId,row]));
+ Array.from(template.content.children).forEach((fresh,index)=>{
+  const old=previous.get(fresh.dataset.pilotId),row=old&&old.outerHTML===fresh.outerHTML?old:fresh;
+  // Keep unchanged controls in place while another pilot's readiness changes.
+  if(list.children[index]!==row)list.insertBefore(row,list.children[index]||null);
+  if(old&&old!==row)old.remove();previous.delete(fresh.dataset.pilotId);
+ });
+ for(const old of previous.values())old.remove();
+}
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const defaults={music:.32,sfx:.65,muted:false,quality:matchMedia('(pointer:coarse)').matches?'low':'high',reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,invert:false,sensitivity:1};
 const saved=read('novaris-settings',{}),preferences=saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
@@ -31,7 +42,7 @@ const self=()=>view?.players?.find(p=>p.id===you);
 const canPlay=()=>view?.phase==='playing'&&self()?.alive&&!modal.open&&activePanel==='hud'&&!document.hidden;
 try{astral=new AstralFrontispiece($('astral'),{quality:settings.quality,reducedMotion:settings.reduced});astral.load().catch(e=>console.warn('Vessel preview unavailable',e));}catch(e){console.warn('Astral scene unavailable',e);}
 canvas.style.visibility='hidden';
-function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=8';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
+function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=9';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
 updateBrandMotion();
 function saveSettings(){updateBrandMotion();try{localStorage.setItem('novaris-settings',JSON.stringify(settings));}catch{}audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);world?.setQuality?.(settings.quality);world?.setReducedMotion?.(settings.reduced);astral?.setReducedMotion(settings.reduced);astral?.setQuality?.(settings.quality);audio.setReducedMotion?.(settings.reduced);}
 function notice(text){if(modal.open){const output=modalKind==='interact'?$('interact-result'):$('modal-notice');if(output){output.textContent=text;output.classList.remove('hidden');return;}}$('toast-text').textContent=text;$('toast').classList.remove('hidden');}
@@ -114,7 +125,7 @@ function consumeState(){
  lastPhase=view.phase;
  }
  if(view.phase==='lobby'){
- const crewMarkup=view.players.map(q=>'<div class="crew-row"><i style="background:'+(q.connected?'#82e5eb':'#697581')+'"></i><b>'+esc(q.name)+'</b>'+(q.id===view.hostId?'<small>COMMANDER</small>':'')+'<span>'+(q.connected?(q.ready?'READY':'PREPARING'):'OFFLINE')+'</span>'+(!q.connected&&you===view.hostId&&q.id!==you?'<button class="release-seat" data-dismiss-pilot="'+esc(q.id)+'" aria-label="Release offline seat for '+esc(q.name)+'">RELEASE SEAT</button>':'')+'</div>').join('');if(crewMarkup!==lastCrewMarkup){$('crew-list').innerHTML=crewMarkup;lastCrewMarkup=crewMarkup;}
+ const crewMarkup=view.players.map(q=>'<div class="crew-row" data-pilot-id="'+esc(q.id)+'"><i style="background:'+(q.connected?'#82e5eb':'#697581')+'"></i><b>'+esc(q.name)+'</b>'+(q.id===view.hostId?'<small>COMMANDER</small>':'')+'<span>'+(q.connected?(q.ready?'READY':'PREPARING'):'OFFLINE')+'</span>'+(!q.connected&&you===view.hostId&&q.id!==you?'<button class="release-seat" data-dismiss-pilot="'+esc(q.id)+'" aria-label="Release offline seat for '+esc(q.name)+'">RELEASE SEAT</button>':'')+'</div>').join('');if(crewMarkup!==lastCrewMarkup){updateCrew(crewMarkup);lastCrewMarkup=crewMarkup;}
  $('ready').disabled=false;setText($('ready'),p.ready?'CANCEL READY':"I'M READY");
  $('start').disabled=you!==view.hostId||!view.players.filter(q=>q.connected).every(q=>q.ready);
 
@@ -131,7 +142,7 @@ function consumeState(){
  $('dash-action').disabled=p.zone==='space'||!p.alive||p.dashCooldown>0||p.energy<25;setText($('dash-action'),p.zone==='space'?'EVADE / GROUND':p.dashCooldown>0?'EVADE / '+p.dashCooldown.toFixed(1)+'s':'Q / EVADE');$('guard-action').classList.toggle('engaged',!!p.guard);$('combat-state').textContent=p.dashing?'EVASION':p.guard?'FRONTAL SHIELD BRACED':'';document.querySelectorAll('[data-vertical]').forEach(b=>b.classList.toggle('hidden',p.zone!=='space'));
  const nearby=nearInteractions();if(modalKind==='interact'){const current=new Map(nearby.map(t=>[t.id,t]));body.querySelectorAll('[data-target]').forEach(button=>{const target=current.get(button.dataset.target),active=view.phase==='playing'&&p.alive;button.disabled=!active||!target?.available;setText(button.querySelector('span'),!active?'UNAVAILABLE':!target?'OUT OF REACH':target.available?'SELECT →':'LOCKED');});}setText($('interact'),!p.alive?'RECONSTRUCT':nearby.length?'INTERACT [E] · '+nearby.length:'INTERACTIONS [E]');
  $('network-status').textContent='ROOM '+room+' · LINKED';
- const fresh=view.events.filter(e=>e.seq>lastSeq);for(const e of fresh){lastSeq=Math.max(lastSeq,e.seq);if(e.zone===p.zone||e.type==='victory'){world?.triggerEvent?.(e);const actor=view.players.find(q=>q.id===e.actorId)||view.npcs.find(q=>q.id===e.actorId);const dx=(e.x??actor?.x??p.x)-p.x,dz=(e.z??actor?.z??p.z)-p.z,dist=Math.hypot(dx,dz);const spatial={actorId:e.actorId||e.targetId,pan:dist?clamp((-dx*Math.cos(yaw)+dz*Math.sin(yaw))/dist,-1,1)*.8:0,distance:dist,volume:e.actorId===you?.7:.45,surface:p.zone==='ember'?'stone':p.zone==='veil'?'grass':'metal'};
+ const fresh=view.events.filter(e=>e.seq>lastSeq);for(const e of fresh){lastSeq=Math.max(lastSeq,e.seq);if(e.zone===p.zone||e.type==='victory'){world?.triggerEvent?.(e);const actor=view.players.find(q=>q.id===e.actorId)||view.npcs.find(q=>q.id===e.actorId);const dx=(e.x??actor?.x??p.x)-p.x,dy=(e.y??actor?.y??p.y)-p.y,dz=(e.z??actor?.z??p.z)-p.z,dist=Math.hypot(dx,dy,dz);const spatial={actorId:e.actorId||e.targetId,pan:dist?clamp((-dx*Math.cos(yaw)+dz*Math.sin(yaw))/dist,-1,1)*.8:0,distance:dist,volume:e.actorId===you?.7:.45,surface:p.zone==='ember'?'stone':p.zone==='veil'?'grass':'metal'};
  if(['shot','hit','kill','melee','telegraph','bossPhase'].includes(e.type))lastCombatAt=performance.now();
  if(e.type==='shot')audio.sfx(e.weapon||'laser',spatial);else if(e.type==='hit'){audio.sfx(e.targetId===you?(p.shield>0?'shield':'hit'):'hit',spatial);if(e.targetId===you)damageUntil=performance.now()+350;if(e.actorId===you)hitUntil=performance.now()+150;}else if(e.type==='kill')audio.sfx('explosion',spatial);else if(e.type==='core')audio.sfx('pickup',spatial);else if(e.type==='transit')audio.sfx('transit',spatial);else if(e.type==='melee')audio.sfx('melee',spatial);else if(e.type==='boost'&&e.actorId===you)audio.sfx('boost');else if(['spawn','repair','equip'].includes(e.type))audio.sfx(e.type==='spawn'?'respawn':e.type,spatial);else if(['dash','guard','block','shieldBreak','telegraph','bossPhase','impact','reactor','extraction'].includes(e.type))audio.sfx(e.type,{...spatial,kind:e.kind});}
  if(e.text&&['kill','core','transit','victory','start','bossPhase'].includes(e.type)){log.unshift(e.type==='transit'?(e.zone.startsWith('ship:')?'Boarded a Vanguard vessel':'Entered '+zoneName(e.zone)):e.type==='start'?(view.mode==='expedition'?'Fleet expedition underway':'Vanguard skirmish underway'):e.text);log.splice(5);}}
