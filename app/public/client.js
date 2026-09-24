@@ -1,13 +1,16 @@
-import {AstralFrontispiece} from './astral.js?v=7';
-import {ARCHIVE} from './archive.js?v=7';
-import {WorldRenderer} from './renderer.js?v=7';
-import {AudioEngine} from './audio.js?v=7';
-import {playIntro} from './intro.js?v=7';
-import {CHAPTERS} from './manual.js?v=7';
+import {AstralFrontispiece} from './astral.js?v=8';
+import {ARCHIVE} from './archive.js?v=8';
+import {WorldRenderer} from './renderer.js?v=8';
+import {AudioEngine} from './audio.js?v=8';
+import {playIntro} from './intro.js?v=8';
+import {CHAPTERS} from './manual.js?v=8';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+// Preserve the hit text node while a browser is completing a pointer click.
+function setText(element,value){const text=String(value);if(element.textContent===text)return;if(element.childNodes.length===1&&element.firstChild.nodeType===Node.TEXT_NODE)element.firstChild.nodeValue=text;else element.textContent=text;}
+let lastCrewMarkup='';
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const defaults={music:.32,sfx:.65,muted:false,quality:matchMedia('(pointer:coarse)').matches?'low':'high',reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,invert:false,sensitivity:1};
 const saved=read('novaris-settings',{}),preferences=saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
@@ -28,7 +31,7 @@ const self=()=>view?.players?.find(p=>p.id===you);
 const canPlay=()=>view?.phase==='playing'&&self()?.alive&&!modal.open&&activePanel==='hud'&&!document.hidden;
 try{astral=new AstralFrontispiece($('astral'),{quality:settings.quality,reducedMotion:settings.reduced});astral.load().catch(e=>console.warn('Vessel preview unavailable',e));}catch(e){console.warn('Astral scene unavailable',e);}
 canvas.style.visibility='hidden';
-function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=7';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
+function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=8';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
 updateBrandMotion();
 function saveSettings(){updateBrandMotion();try{localStorage.setItem('novaris-settings',JSON.stringify(settings));}catch{}audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);world?.setQuality?.(settings.quality);world?.setReducedMotion?.(settings.reduced);astral?.setReducedMotion(settings.reduced);astral?.setQuality?.(settings.quality);audio.setReducedMotion?.(settings.reduced);}
 function notice(text){if(modal.open){const output=modalKind==='interact'?$('interact-result'):$('modal-notice');if(output){output.textContent=text;output.classList.remove('hidden');return;}}$('toast-text').textContent=text;$('toast').classList.remove('hidden');}
@@ -111,11 +114,11 @@ function consumeState(){
  lastPhase=view.phase;
  }
  if(view.phase==='lobby'){
- $('crew-list').innerHTML=view.players.map(q=>'<div class="crew-row"><i style="background:'+(q.connected?'#82e5eb':'#697581')+'"></i><b>'+esc(q.name)+'</b>'+(q.id===view.hostId?'<small>COMMANDER</small>':'')+'<span>'+(q.connected?(q.ready?'READY':'PREPARING'):'OFFLINE')+'</span>'+(!q.connected&&you===view.hostId&&q.id!==you?'<button class="release-seat" data-dismiss-pilot="'+esc(q.id)+'" aria-label="Release offline seat for '+esc(q.name)+'">RELEASE SEAT</button>':'')+'</div>').join('');
- $('ready').disabled=false;$('ready').textContent=p.ready?'CANCEL READY':"I'M READY";
+ const crewMarkup=view.players.map(q=>'<div class="crew-row"><i style="background:'+(q.connected?'#82e5eb':'#697581')+'"></i><b>'+esc(q.name)+'</b>'+(q.id===view.hostId?'<small>COMMANDER</small>':'')+'<span>'+(q.connected?(q.ready?'READY':'PREPARING'):'OFFLINE')+'</span>'+(!q.connected&&you===view.hostId&&q.id!==you?'<button class="release-seat" data-dismiss-pilot="'+esc(q.id)+'" aria-label="Release offline seat for '+esc(q.name)+'">RELEASE SEAT</button>':'')+'</div>').join('');if(crewMarkup!==lastCrewMarkup){$('crew-list').innerHTML=crewMarkup;lastCrewMarkup=crewMarkup;}
+ $('ready').disabled=false;setText($('ready'),p.ready?'CANCEL READY':"I'M READY");
  $('start').disabled=you!==view.hostId||!view.players.filter(q=>q.connected).every(q=>q.ready);
 
- $('start').textContent=you===view.hostId?'LAUNCH MISSION':'WAITING FOR COMMANDER';
+ setText($('start'),you===view.hostId?'LAUNCH MISSION':'WAITING FOR COMMANDER');
  $('lobby-status').textContent=view.players.filter(q=>q.connected).length+' / 6 pilots connected. '+(you===view.hostId?'Launch when every connected pilot is ready.':'Your commander chooses the mission and launches.');
  document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('selected',b.dataset.mode===view.mode);b.disabled=you!==view.hostId;});
  }
@@ -125,8 +128,8 @@ function consumeState(){
  for(const [key,max] of [['hp',100],['shield',70],['energy',100]]){$(key+'-value').textContent=Math.ceil(p[key]);$(key+'-bar').style.width=clamp(p[key]/max*100,0,100)+'%';}
  document.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('active',b.dataset.weapon===p.weapon));
  const boss=view.npcs.find(n=>n.zone===p.zone&&n.boss&&n.alive);$('boss-hud').classList.toggle('hidden',!boss);$('hud').classList.toggle('boss-present',!!boss);if(boss){$('boss-name').textContent=boss.name||'THE HOLLOW JARL';$('boss-health').style.width=clamp(boss.hp/(boss.hpMax||boss.maxHp||260)*100,0,100)+'%';$('boss-phase').textContent=boss.telegraph?'VOLLEY CHARGING · MOVE FROM ITS LINE':boss.phase===2?'PHASE II / THE BROKEN OATH':'PHASE I / WARDEN OF THE CITADEL';}
- $('dash-action').disabled=p.zone==='space'||!p.alive||p.dashCooldown>0||p.energy<25;$('dash-action').textContent=p.zone==='space'?'EVADE / GROUND':p.dashCooldown>0?'EVADE / '+p.dashCooldown.toFixed(1)+'s':'Q / EVADE';$('guard-action').classList.toggle('engaged',!!p.guard);$('combat-state').textContent=p.dashing?'EVASION':p.guard?'FRONTAL SHIELD BRACED':'';document.querySelectorAll('[data-vertical]').forEach(b=>b.classList.toggle('hidden',p.zone!=='space'));
- const nearby=nearInteractions();if(modalKind==='interact'){const current=new Map(nearby.map(t=>[t.id,t]));body.querySelectorAll('[data-target]').forEach(button=>{const target=current.get(button.dataset.target),active=view.phase==='playing'&&p.alive;button.disabled=!active||!target?.available;button.querySelector('span').textContent=!active?'UNAVAILABLE':!target?'OUT OF REACH':target.available?'SELECT →':'LOCKED';});}$('interact').textContent=!p.alive?'RECONSTRUCT':nearby.length?'INTERACT [E] · '+nearby.length:'INTERACTIONS [E]';
+ $('dash-action').disabled=p.zone==='space'||!p.alive||p.dashCooldown>0||p.energy<25;setText($('dash-action'),p.zone==='space'?'EVADE / GROUND':p.dashCooldown>0?'EVADE / '+p.dashCooldown.toFixed(1)+'s':'Q / EVADE');$('guard-action').classList.toggle('engaged',!!p.guard);$('combat-state').textContent=p.dashing?'EVASION':p.guard?'FRONTAL SHIELD BRACED':'';document.querySelectorAll('[data-vertical]').forEach(b=>b.classList.toggle('hidden',p.zone!=='space'));
+ const nearby=nearInteractions();if(modalKind==='interact'){const current=new Map(nearby.map(t=>[t.id,t]));body.querySelectorAll('[data-target]').forEach(button=>{const target=current.get(button.dataset.target),active=view.phase==='playing'&&p.alive;button.disabled=!active||!target?.available;setText(button.querySelector('span'),!active?'UNAVAILABLE':!target?'OUT OF REACH':target.available?'SELECT →':'LOCKED');});}setText($('interact'),!p.alive?'RECONSTRUCT':nearby.length?'INTERACT [E] · '+nearby.length:'INTERACTIONS [E]');
  $('network-status').textContent='ROOM '+room+' · LINKED';
  const fresh=view.events.filter(e=>e.seq>lastSeq);for(const e of fresh){lastSeq=Math.max(lastSeq,e.seq);if(e.zone===p.zone||e.type==='victory'){world?.triggerEvent?.(e);const actor=view.players.find(q=>q.id===e.actorId)||view.npcs.find(q=>q.id===e.actorId);const dx=(e.x??actor?.x??p.x)-p.x,dz=(e.z??actor?.z??p.z)-p.z,dist=Math.hypot(dx,dz);const spatial={actorId:e.actorId||e.targetId,pan:dist?clamp((-dx*Math.cos(yaw)+dz*Math.sin(yaw))/dist,-1,1)*.8:0,distance:dist,volume:e.actorId===you?.7:.45,surface:p.zone==='ember'?'stone':p.zone==='veil'?'grass':'metal'};
  if(['shot','hit','kill','melee','telegraph','bossPhase'].includes(e.type))lastCombatAt=performance.now();
@@ -159,7 +162,7 @@ function pauseModal(){openModal('pause','VANGUARD / FLIGHT MENU','<h2>Your next 
 }
 $('hud-menu').onclick=pauseModal;
 function deathModal(){openModal('death','VANGUARD / SIGNAL LOST','<h2>Your oath endures.</h2><p>Your suit reconstruction will become available shortly. Your score stays with you. You choose when to return.</p><button id="respawn" class="primary">RECONSTRUCT</button><button id="death-map" class="secondary">FIELD MANUAL</button>');$('respawn').onclick=()=>{if(action({type:'respawn'}))closeModal();};$('death-map').onclick=()=>manual(8);updateRespawn();}
-function updateRespawn(){const p=self();if(!$('respawn')||!p)return;$('respawn').disabled=p.respawn>0;$('respawn').textContent=p.respawn>0?'RECONSTRUCT IN '+Math.ceil(p.respawn)+'s':'RECONSTRUCT & REJOIN';}
+function updateRespawn(){const p=self();if(!$('respawn')||!p)return;$('respawn').disabled=p.respawn>0;setText($('respawn'),p.respawn>0?'RECONSTRUCT IN '+Math.ceil(p.respawn)+'s':'RECONSTRUCT & REJOIN');}
 function resultModal(){const r=view?.result;if(!r)return;audio.setScene('victory');openModal('result','SORTIE / COMPLETE','<h2>'+esc(r.title||'Mission complete')+'</h2><p>'+esc(r.reason||'The stars remember your vanguard.')+'</p>'+[...view.players].sort((a,b)=>b.score-a.score).map(p=>'<div class="score-row"><b>'+esc(p.name)+'</b><span>'+p.kills+' eliminations · '+p.deaths+' losses · '+p.score+' score</span></div>').join('')+(you===view.hostId?'<button id="rematch" class="primary">RETURN TO LOBBY</button>':'<p>Your commander can return the crew to the lobby for another mission.</p>')+'<button id="result-close" class="secondary">STAY HERE</button>');if($('rematch'))$('rematch').onclick=requestReset;$('result-close').onclick=closeModal;}
 function sendInput(neutral=false){
  if(!view||view.phase!=='playing')return;const p=self();if(!p||!p.alive)return;const live=!neutral&&canPlay();let forward=0,right=0,vertical=0;
