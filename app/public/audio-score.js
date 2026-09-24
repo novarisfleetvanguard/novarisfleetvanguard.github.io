@@ -1,5 +1,6 @@
 /** Original Novaris score. An unbroken mythic overture and phrase-aligned frontier arrangements. */
 export const SCORES={
+ title:{bpm:54,root:33,chords:[0,0,-2,-2,5,5,3,3,0,0,-2,0],color:'minor',motif:[0,3,5,10,7,3],air:1,pluck:1,drum:.4},
  intro:{bpm:72,root:33,chords:[0,0,5,0],color:'minor',motif:[0,7,10,14,7,3,12,10],air:.28,pluck:.28,drum:.1},
  menu:{bpm:78,root:38,chords:[0,5,3,-2,0,3,5,7],color:'minor',motif:[0,7,10,14,12,7,3,10],air:1,pluck:.9,drum:.12},
  space:{bpm:102,root:38,chords:[0,-2,3,5,0,7,5,-2],color:'minor',motif:[0,7,12,14,10,7,3,12],air:.85,pluck:.82,drum:.55},
@@ -13,6 +14,26 @@ export const SCORES={
 SCORES.mythic={bpm:72,root:38,chords:[0,0,-2,0,5,0,3,0],color:'minor',motif:[0,3,7,10,7,5,3,0],air:1,pluck:1,drum:.55};
 for(const name of ['intro','loading','menu','lobby','space'])SCORES[name]=SCORES.mythic;
 export const scoreKey=name=>['intro','loading','menu','lobby','space','mythic'].includes(name)?'mythic':Object.hasOwn(SCORES,name)?name:(name==='dreadnought'||name?.startsWith('ship:')?'interior':'mythic');
+// A separate slow threshold ritual in A: a twelve-bar arch, long rests, low
+// unanswered bowed calls and a descending plucked response. Entirely original.
+function scheduleTitle(e,step,t){
+ const b=60/54,bar=Math.floor(step/16),q=step%16,phrase=bar%12,cycle=Math.floor(bar/12)%2,root=33,n=root+SCORES.title.chords[phrase];
+ const voice=(name,note,len,vol,opts={})=>e._instrument(name,note,t,len,vol,opts);
+ if(q===0){
+  for(const [offset,amp,pan]of[[0,.033,-.32],[12,.025,.25],[19,.013,-.08]])e._tone(hz(n+offset),b*3.98,amp,'bow',t,'music',{attack:.72,release:1.3,cutoff:610,wet:.68,pan,vibrato:3.7,vibratoDepth:2});
+  e._tone(hz(root-12),b*3.95,.041,'sine',t,'music',{attack:.45,release:1.1,cutoff:95,wet:.06});
+  if(phrase===0||phrase===6)voice('gong',root+7,b*6.5,.024,{pan:.12,wet:.8});
+  if(phrase===0||phrase===3||phrase===8)voice('ceremonial',root-5,1.7,.125,{pan:-.22,wet:.55});
+ }
+ const plucks={0:[[9,0]],1:[[2,3],[11,5]],2:[[5,10]],3:[[3,7],[12,3]],4:[[7,5]],5:[[1,3],[10,0]],6:[[11,7]],7:[[3,10],[12,7]],8:[[5,3]],9:[[2,0],[11,-2]],10:[[7,-5]],11:[[1,0]]};
+ for(const[slot,interval]of plucks[phrase])if(q===slot)voice(cycle?'pipa':'guqin',root+24+interval,b*2.4,cycle?.056:.082,{pan:phrase%2?.3:-.24,wet:.62});
+ if((phrase===2||phrase===6||phrase===10)&&q===0)voice('erhu',root+12+({2:7,6:10,10:3}[phrase]),b*3.35,.043,{pan:-.34,wet:.75});
+ if(phrase===5&&q===4)voice('dizi',root+24+7,b*2.4,.027,{pan:.32,wet:.78});
+ if(phrase===11&&q===4)voice('dizi',root+24,b*2.6,.03,{pan:.32,wet:.78});
+ if((phrase===3||phrase===8)&&q===10)voice('ceremonial',root-2,.85,.055,{pan:.27,wet:.48});
+ if(phrase===7&&q===14)voice('bell',root+36+10,b*3,.017,{pan:.42,wet:.82});
+ if(q===0&&(phrase===0||phrase===6))e._noise(b*3.7,.009,t,'music',{attack:1.1,release:1.1,bandpass:420,q:.65,wet:.86,rate:.35,pan:-.4});
+}
 function scheduleMythic(e,step,t,threat){
  const b=60/72,bar=Math.floor(step/16),q=step%16,phrase=bar%8,chapter=Math.floor(bar/8)%4,root=38,pedal=[0,0,-2,0,5,0,3,0][phrase],n=root+pedal;
  const energy=.8+Math.min(1,threat)*.16,voice=(name,note,len,vol,opts={})=>e._instrument(name,note,t,len,vol*energy,opts);
@@ -39,6 +60,7 @@ function scheduleMythic(e,step,t,threat){
 }
 const hz=n=>440*2**((n-69)/12);
 export function scheduleScore(e,scene,step,t,threat=0){
+ if(scoreKey(scene)==='title')return scheduleTitle(e,step,t);
  if(scoreKey(scene)==='mythic')return scheduleMythic(e,step,t,threat);
  const s=SCORES[scene]||SCORES.menu,b=60/s.bpm,bar=Math.floor(step/16),q=step%16,phrase=bar%8,chord=s.chords[phrase%s.chords.length];
  const root=s.root+chord,third=s.color==='major'?4:3,intensity=Math.max(0,Math.min(1,threat));

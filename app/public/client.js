@@ -1,7 +1,7 @@
 import {AstralFrontispiece} from './astral.js?v=10';
 import {ARCHIVE} from './archive.js?v=10';
 import {WorldRenderer} from './renderer.js?v=10';
-import {AudioEngine} from './audio.js?v=11';
+import {AudioEngine} from './audio.js?v=13';
 import {playIntro} from './intro.js?v=11';
 import {CHAPTERS} from './manual.js?v=10';
 
@@ -28,7 +28,7 @@ const saved=read('novaris-settings',{}),preferences=saved&&typeof saved==='objec
 const numericSetting=(key,min,max)=>typeof preferences[key]==='number'&&Number.isFinite(preferences[key])?clamp(preferences[key],min,max):defaults[key];
 let settings={music:numericSetting('music',0,1),sfx:numericSetting('sfx',0,1),sensitivity:numericSetting('sensitivity',.3,2),quality:['high','low'].includes(preferences.quality)?preferences.quality:defaults.quality,...Object.fromEntries(['muted','reduced','invert'].map(key=>[key,typeof preferences[key]==='boolean'?preferences[key]:defaults[key]]))};
 const roomIdentities=new Map();
-const audio=new AudioEngine();audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);audio.setReducedMotion(settings.reduced);
+const audio=new AudioEngine();audio.setScene('title');audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);audio.setReducedMotion(settings.reduced);
 let astral=null,loadPromise=null,finishingIntro=false,lastCombatAt=0,damageUntil=0,hitUntil=0,mouseGuard=false;
 const arrivals=new Set();
 let world=null,loaded=false,view=null,you=null,ws=null,room='',intentionalClose=false,reconnectTimer=null,reconnectCount=0;
@@ -56,7 +56,7 @@ $('toast-close').onclick=()=>dismissOverlay('toast');
 document.addEventListener('click',e=>{if(e.target.closest('button'))audio.sfx('click');if(e.detail>0&&e.target.closest('#hud button')&&canPlay())canvas.focus({preventScroll:true});});
 document.addEventListener('pointerover',e=>{if(e.target.closest('button')&&e.pointerType==='mouse')audio.sfx('hover');});
 function settingsModal(){
-openModal('settings','SYSTEMS / PERSONAL SETTINGS','<h2>Make it your flight.</h2><p>Sound begins after your first click. Only one music score plays at a time.</p><div class="settings-row"><label for="music-vol">Music volume</label><input id="music-vol" type="range" min="0" max="1" step=".01" value="'+settings.music+'"></div><div class="settings-row"><label for="sfx-vol">Effects volume</label><input id="sfx-vol" type="range" min="0" max="1" step=".01" value="'+settings.sfx+'"></div><div class="settings-row"><label for="mute">Mute all audio</label><input id="mute" type="checkbox" '+(settings.muted?'checked':'')+'></div><div class="settings-row"><label for="reduce">Reduce camera effects & motion</label><input id="reduce" type="checkbox" '+(settings.reduced?'checked':'')+'></div><div class="settings-row"><label for="invert">Invert vertical look</label><input id="invert" type="checkbox" '+(settings.invert?'checked':'')+'></div><div class="settings-row"><label for="sensitivity">Look sensitivity</label><input id="sensitivity" type="range" min=".3" max="2" step=".1" value="'+settings.sensitivity+'"></div><div class="settings-row"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="low">Performance</option></select></div><p>Escape releases mouse capture. Shared missions continue while a personal menu is open.</p><button class="primary" id="settings-done">SAVE & CLOSE</button>');
+openModal('settings','SYSTEMS / PERSONAL SETTINGS','<h2>Make it your flight.</h2><p>Sound begins after your first click, tap or keypress. Only one music score plays at a time.</p><div class="settings-row"><label for="music-vol">Music volume</label><input id="music-vol" type="range" min="0" max="1" step=".01" value="'+settings.music+'"></div><div class="settings-row"><label for="sfx-vol">Effects volume</label><input id="sfx-vol" type="range" min="0" max="1" step=".01" value="'+settings.sfx+'"></div><div class="settings-row"><label for="mute">Mute all audio</label><input id="mute" type="checkbox" '+(settings.muted?'checked':'')+'></div><div class="settings-row"><label for="reduce">Reduce camera effects & motion</label><input id="reduce" type="checkbox" '+(settings.reduced?'checked':'')+'></div><div class="settings-row"><label for="invert">Invert vertical look</label><input id="invert" type="checkbox" '+(settings.invert?'checked':'')+'></div><div class="settings-row"><label for="sensitivity">Look sensitivity</label><input id="sensitivity" type="range" min=".3" max="2" step=".1" value="'+settings.sensitivity+'"></div><div class="settings-row"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="low">Performance</option></select></div><p>Escape releases mouse capture. Shared missions continue while a personal menu is open.</p><button class="primary" id="settings-done">SAVE & CLOSE</button>');
 $('quality').value=settings.quality;
 ['music-vol','sfx-vol','mute','reduce','invert','sensitivity','quality'].forEach(id=>$(id).oninput=()=>{
 settings.music=+$('music-vol').value;settings.sfx=+$('sfx-vol').value;settings.muted=$('mute').checked;settings.reduced=$('reduce').checked;settings.invert=$('invert').checked;settings.sensitivity=+$('sensitivity').value;settings.quality=$('quality').value;saveSettings();});
@@ -233,6 +233,6 @@ window.addEventListener('pageshow',event=>{
  audio.setVisibility?.(!document.hidden);
  if(room&&view)connect(room,true);
 });
-document.addEventListener('pointerdown',()=>{
- if(audio.context&&audio.context.state!=='running')audio.unlock();
-},{capture:true});
+// A title-screen gesture awakens its theme without advancing the opening.
+function awakenScore(){if((activePanel==='boot'||audio.context)&&audio.context?.state!=='running')void audio.unlock();}
+for(const event of ['pointerdown','pointerup','keydown'])document.addEventListener(event,awakenScore,{capture:true});
