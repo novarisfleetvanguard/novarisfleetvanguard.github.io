@@ -56,7 +56,7 @@ $('toast-close').onclick=()=>dismissOverlay('toast');
 document.addEventListener('click',e=>{if(e.target.closest('button'))audio.sfx('click');if(e.detail>0&&e.target.closest('#hud button')&&canPlay())canvas.focus({preventScroll:true});});
 document.addEventListener('pointerover',e=>{if(e.target.closest('button')&&e.pointerType==='mouse')audio.sfx('hover');});
 function settingsModal(){
-openModal('settings','SYSTEMS / PERSONAL SETTINGS','<h2>Make it your flight.</h2><p>Sound begins after your first click, tap or keypress. Only one music score plays at a time.</p><div class="settings-row"><label for="music-vol">Music volume</label><input id="music-vol" type="range" min="0" max="1" step=".01" value="'+settings.music+'"></div><div class="settings-row"><label for="sfx-vol">Effects volume</label><input id="sfx-vol" type="range" min="0" max="1" step=".01" value="'+settings.sfx+'"></div><div class="settings-row"><label for="mute">Mute all audio</label><input id="mute" type="checkbox" '+(settings.muted?'checked':'')+'></div><div class="settings-row"><label for="reduce">Reduce camera effects & motion</label><input id="reduce" type="checkbox" '+(settings.reduced?'checked':'')+'></div><div class="settings-row"><label for="invert">Invert vertical look</label><input id="invert" type="checkbox" '+(settings.invert?'checked':'')+'></div><div class="settings-row"><label for="sensitivity">Look sensitivity</label><input id="sensitivity" type="range" min=".3" max="2" step=".1" value="'+settings.sensitivity+'"></div><div class="settings-row"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="low">Performance</option></select></div><p>Escape releases mouse capture. Shared missions continue while a personal menu is open.</p><button class="primary" id="settings-done">SAVE & CLOSE</button>');
+openModal('settings','SYSTEMS / PERSONAL SETTINGS','<h2>Make it your flight.</h2><p>Music starts automatically when your browser allows it. Otherwise, click, tap or press a key. Only one music score plays at a time.</p><div class="settings-row"><label for="music-vol">Music volume</label><input id="music-vol" type="range" min="0" max="1" step=".01" value="'+settings.music+'"></div><div class="settings-row"><label for="sfx-vol">Effects volume</label><input id="sfx-vol" type="range" min="0" max="1" step=".01" value="'+settings.sfx+'"></div><div class="settings-row"><label for="mute">Mute all audio</label><input id="mute" type="checkbox" '+(settings.muted?'checked':'')+'></div><div class="settings-row"><label for="reduce">Reduce camera effects & motion</label><input id="reduce" type="checkbox" '+(settings.reduced?'checked':'')+'></div><div class="settings-row"><label for="invert">Invert vertical look</label><input id="invert" type="checkbox" '+(settings.invert?'checked':'')+'></div><div class="settings-row"><label for="sensitivity">Look sensitivity</label><input id="sensitivity" type="range" min=".3" max="2" step=".1" value="'+settings.sensitivity+'"></div><div class="settings-row"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="low">Performance</option></select></div><p>Escape releases mouse capture. Shared missions continue while a personal menu is open.</p><button class="primary" id="settings-done">SAVE & CLOSE</button>');
 $('quality').value=settings.quality;
 ['music-vol','sfx-vol','mute','reduce','invert','sensitivity','quality'].forEach(id=>$(id).oninput=()=>{
 settings.music=+$('music-vol').value;settings.sfx=+$('sfx-vol').value;settings.muted=$('mute').checked;settings.reduced=$('reduce').checked;settings.invert=$('invert').checked;settings.sensitivity=+$('sensitivity').value;settings.quality=$('quality').value;saveSettings();});
@@ -197,7 +197,7 @@ document.addEventListener('keydown',e=>{
  if(!e.repeat){if(e.code==='KeyQ'&&canPlay())action({type:'dash'});if(e.code==='KeyE')interactions();if(e.code==='Tab')mapModal();if(e.code==='KeyH')manual();if(/^Digit[1-4]$/.test(e.code))action({type:'equip',weapon:['pulse','scatter','lance','blade'][+e.code.slice(-1)-1]});}
  keys.add(e.code);
 });
-document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',releaseInput);document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseInput();audio.setVisibility?.(!document.hidden);});
+document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',releaseInput);document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseInput();audio.setVisibility?.(!document.hidden);if(!document.hidden&&activePanel==='boot')awakenScore();});
 function syncMouseButtons(e){if(e.pointerType!=='mouse')return;mouseGuard=!!(e.buttons&2);mouseFire=document.pointerLockElement===canvas&&!!(e.buttons&1);}
 canvas.addEventListener('pointerdown',e=>{if(!canPlay())return;syncMouseButtons(e);if(e.button===2){mouseGuard=true;if(document.pointerLockElement!==canvas)canvas.setPointerCapture(e.pointerId);return;}if(document.pointerLockElement===canvas)return;dragPointer=e.pointerId;previousPointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove',e=>{if(!canPlay())return;syncMouseButtons(e);let dx=0,dy=0;if(document.pointerLockElement===canvas){dx=e.movementX;dy=e.movementY;}else if(dragPointer===e.pointerId){dx=e.clientX-previousPointer.x;dy=e.clientY-previousPointer.y;previousPointer={x:e.clientX,y:e.clientY};}else return;look(dx,dy);});
@@ -231,8 +231,13 @@ window.addEventListener('pagehide',event=>{
 window.addEventListener('pageshow',event=>{
  if(!event.persisted)return;
  audio.setVisibility?.(!document.hidden);
+ if(!document.hidden&&activePanel==='boot')awakenScore();
  if(room&&view)connect(room,true);
 });
 // A title-screen gesture awakens its theme without advancing the opening.
 function awakenScore(){if((activePanel==='boot'||audio.context)&&audio.context?.state!=='running')void audio.unlock();}
 for(const event of ['pointerdown','pointerup','keydown'])document.addEventListener(event,awakenScore,{capture:true});
+
+// Attempt audible entry once; blocked autoplay leaves the gesture fallback intact.
+void audio.setVisibility(!document.hidden);
+if(!document.hidden)awakenScore();
