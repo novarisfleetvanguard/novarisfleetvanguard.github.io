@@ -1,4 +1,4 @@
-import {SCORES,scheduleScore,scoreKey} from './audio-score.js?v=13';
+import {SCORES,scheduleScore,scoreKey} from './audio-score.js?v=15';
 import {playEffect} from './audio-effects.js?v=10';
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,Number.isFinite(Number(v))?Number(v):lo));
 const hz=n=>440*2**((n-69)/12);
@@ -30,7 +30,7 @@ export class AudioEngine {
   const next=Object.hasOwn(SCORES,name)?name:(name==='dreadnought'||name?.startsWith('ship:')?'interior':'menu'),key=scoreKey(next);this.scene=next;
   if(!this.context||this.context.state!=='running'||!this.timer){this.score=key;this.pendingScore=null;if(this.context?.state==='running'&&!this.destroyed&&this.visible)this._startScore();return;}
   if(key===this.score){if(this.pendingScore){if(this.titleTransition){clearTimeout(this.titleTransition.timer);this.titleTransition=null;}this.pendingScore=null;const g=this.stage.dry.gain,t=this.context.currentTime;if(g.cancelAndHoldAtTime)g.cancelAndHoldAtTime(t);else{g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);}g.linearRampToValueAtTime(1,t+.35);}return;}
-  if(key===this.pendingScore)return;if(this.score==='title'){this.pendingScore=key;if(!this.titleTransition)this._fadeTitle();return;}this.pendingScore=key;this.pendingStep=Math.ceil((this.transport.step+1)/128)*128;this._scheduleHandoff();
+  if(key===this.pendingScore)return;if(this.score==='title'){this.pendingScore=key;if(!this.titleTransition)this._fadeTitle();return;}const keepBoundary=this.pendingScore&&this.pendingStep>=this.transport.step;this.pendingScore=key;if(!keepBoundary)this.pendingStep=Math.ceil((this.transport.step+1)/128)*128;this._scheduleHandoff();
  }
  // The title is a separate arrangement. Its outgoing stage is fully silent and retired
  // before the introductory stage starts; repeated BEGIN requests cannot stack decks.
@@ -42,7 +42,7 @@ export class AudioEngine {
  }
  _scheduleHandoff(){
   if(!this.pendingScore||this.titleTransition||!this.transport||!this.stage)return;const c=this.context,tr=this.transport,b=60/SCORES[this.score].bpm,t=tr.nextTime+(this.pendingStep-tr.step)*b/4,g=this.stage.dry.gain,now=c.currentTime;
-  if(g.cancelAndHoldAtTime)g.cancelAndHoldAtTime(now);else{g.cancelScheduledValues(now);g.setValueAtTime(g.value,now);}g.setValueAtTime(1,Math.max(now,t-.85));g.linearRampToValueAtTime(.00001,t);g.linearRampToValueAtTime(1,t+1.05);
+  if(g.cancelAndHoldAtTime)g.cancelAndHoldAtTime(now);else{g.cancelScheduledValues(now);g.setValueAtTime(g.value,now);}const fadeStart=t-.85;if(now<fadeStart){g.linearRampToValueAtTime(1,Math.min(fadeStart,now+.18));g.setValueAtTime(1,fadeStart);}g.linearRampToValueAtTime(0,Math.max(now+.01,t));
  }
  _stopScore(){if(this.titleTransition){clearTimeout(this.titleTransition.timer);this.titleTransition=null;}this.epoch++;if(this.timer)clearTimeout(this.timer);this.timer=null;this.transport=null;this.pendingScore=null;this.score=scoreKey(this.scene);for(const voice of [...this.musicVoices])voice.stop();if(this.stage){for(const node of this.stage.nodes)try{node.disconnect();}catch{}this.stage=null;}}
  _newStage(){const c=this.context,dry=c.createGain(),verb=c.createConvolver(),wet=c.createGain(),echo=c.createDelay(1),echoGain=c.createGain(),feedback=c.createGain(),filter=c.createBiquadFilter();const mythic=this.score==='mythic'||this.score==='title';verb.buffer=mythic?this.musicImpulse:this.impulse;wet.gain.value=mythic?.3:.27;echo.delayTime.value=60/SCORES[this.score].bpm*.75;echoGain.gain.value=mythic?.075:.11;feedback.gain.value=mythic?.14:.18;filter.type='lowpass';filter.frequency.value=mythic?1800:2200;dry.connect(this.musicBus);verb.connect(wet);wet.connect(dry);echo.connect(filter);filter.connect(echoGain);echoGain.connect(dry);filter.connect(feedback);feedback.connect(echo);this.stage={dry,verb,echo,wet,echoGain,feedback,filter,mythic,nodes:[dry,verb,wet,echo,echoGain,feedback,filter]};}
@@ -52,7 +52,13 @@ export class AudioEngine {
   const tick=()=>{if(this.destroyed||epoch!==this.epoch)return;const tr=this.transport;if(c.state==='running'){
    if(tr.nextTime<c.currentTime-.25){tr.nextTime=c.currentTime+.025;this._scheduleHandoff();}
    while(tr.nextTime<c.currentTime+.17){
-    if(this.pendingScore&&!this.titleTransition&&tr.step>=this.pendingStep){for(const v of [...this.musicVoices])v.endAt(tr.nextTime);this.score=this.pendingScore;this.pendingScore=null;tr.scoreStart=tr.step;this.stage.echo.delayTime.setValueAtTime(60/SCORES[this.score].bpm*.75,tr.nextTime);this._stageColor(this.score,tr.nextTime);}
+    if(this.pendingScore&&!this.titleTransition&&tr.step>=this.pendingStep){
+     // Wait until the outgoing envelope is actually silent. Retire its entire
+     // reverb/delay graph instead of resetting a live tail during lookahead.
+     if(tr.nextTime>c.currentTime)break;
+     for(const v of [...this.musicVoices])v.stop();for(const node of this.stage.nodes)try{node.disconnect();}catch{}this.stage=null;
+     this.score=this.pendingScore;this.pendingScore=null;tr.scoreStart=tr.step;tr.nextTime=c.currentTime+.025;this._newStage();this.stage.dry.gain.setValueAtTime(0,c.currentTime);this.stage.dry.gain.linearRampToValueAtTime(1,c.currentTime+1.05);
+    }
     scheduleScore(this,this.score,tr.step-tr.scoreStart,tr.nextTime,this.intensity*(this.reducedMotion?.7:1));tr.step++;tr.nextTime+=60/SCORES[this.score].bpm/4;
    }
   }this.timer=setTimeout(tick,c.state==='running'?55:160);};tick();
@@ -61,8 +67,13 @@ export class AudioEngine {
   const c=this.context;if(!c||this.destroyed)return null;const pool=channel==='music'?this.musicVoices:this.effectVoices;if(pool.size>=(channel==='music'?112:80))pool.values().next().value.stop();
   const gain=c.createGain(),filter=c.createBiquadFilter(),pan=c.createStereoPanner(),wet=c.createGain();filter.type=options.bandpass?'bandpass':options.highpass?'highpass':'lowpass';filter.frequency.value=options.bandpass||options.highpass||options.cutoff||14000;filter.Q.value=options.q??.65;pan.pan.value=clamp(options.pan??0,-1,1)*(this.reducedMotion?.6:1);
   source.connect(filter);filter.connect(gain);gain.connect(pan);const stage=channel==='music'?this.stage:null,bus=stage?.dry||(channel==='music'?this.musicBus:this.effectsBus);pan.connect(bus);wet.gain.value=clamp(options.wet??(channel==='music'?.25:.12));pan.connect(wet);wet.connect(stage?.verb||this.fxReverb);if(stage?.echo&&options.echo)pan.connect(stage.echo);
+  if(options.smoothEnvelope){
+   const attack=Math.min(options.attack??.06,length*.3),release=Math.min(options.release??length*.4,(length-attack)*.8),sustain=options.sustain??.7,curve=new Float32Array(256);
+   for(let i=0;i<curve.length;i++){const x=i/(curve.length-1)*length;let gain;if(x<attack)gain=.5-.5*Math.cos(Math.PI*x/attack);else if(x>length-release)gain=sustain*(.5+.5*Math.cos(Math.PI*(x-length+release)/release));else gain=1-(1-sustain)*(x-attack)/Math.max(.001,length-release-attack);curve[i]=gain*volume;}curve[0]=0;curve[curve.length-1]=0;gain.gain.setValueCurveAtTime(curve,time,length);
+  }else{
   const a=Math.min(options.attack??.005,length*.4),hold=Math.min(.8,options.hold??.18),release=Math.min(options.release??length*.5,length-a),peak=Math.max(.00001,volume);gain.gain.setValueAtTime(.00001,time);gain.gain.exponentialRampToValueAtTime(peak,time+a);gain.gain.exponentialRampToValueAtTime(Math.max(.00001,peak*(options.sustain??.55)),time+Math.max(a,length-release));gain.gain.exponentialRampToValueAtTime(.00001,time+length);
   if(hold>.3)gain.gain.setValueAtTime(peak*.7,time+a+(length-a-release)*hold);
+  }
   let ended=false;const voice={endAt:at=>{if(ended)return;try{source.stop(at);}catch{}},stop:()=>{if(ended)return;ended=true;try{source.stop();}catch{}for(const node of [source,filter,gain,pan,wet,...(options.nodes||[])])try{node.disconnect();}catch{}for(const node of options.stoppables||[])try{node.stop();}catch{}pool.delete(voice);}};
   source.onended=voice.stop;pool.add(voice);source.start(time);source.stop(time+length+.02);return voice;
  }
@@ -72,6 +83,17 @@ export class AudioEngine {
   return this._voice(s,length,volume,time,channel,{...options,nodes,stoppables});
  }
  _noise(length,volume,time,channel='effect',options={}){if(!this.context)return;const s=this.context.createBufferSource();s.buffer=this.noise;s.loop=true;s.playbackRate.value=options.rate||1;return this._voice(s,length,volume,time,channel,options);}
+ // Rounded harmonic instruments used only by the revised non-title score.
+ // Existing title and effect instruments retain their original DSP/envelopes.
+ _smoothNote(name,note,time,length,volume,opts={}){
+  const f=hz(note),base={smoothEnvelope:true,wet:.25,pan:0,cutoff:3600,...opts},tone=(ratio,duration,amplitude,extra={})=>this._tone(f*ratio,duration,volume*amplitude,'sine',time,'music',{...base,...extra});
+  if(name==='strings'){tone(1,length,1,{attack:.38,release:.75,sustain:.82});tone(2,length,.12,{attack:.42,release:.75,sustain:.75});tone(3,length,.025,{attack:.46,release:.75,sustain:.7});}
+  else if(name==='flute'){tone(1,length,1,{attack:.12,release:.3,sustain:.85});tone(2,length,.045,{attack:.16,release:.3,sustain:.8});}
+  else if(name==='harp'){tone(1,length,1,{attack:.026,release:length*.74,sustain:.66});tone(2,length*.7,.12,{attack:.026,release:length*.45,sustain:.5});tone(3,length*.45,.024,{attack:.03,release:length*.28,sustain:.45});}
+  else if(name==='bell'){tone(1,length,1,{attack:.06,release:length*.8,sustain:.65});tone(2,length*.7,.055,{attack:.07,release:length*.5,sustain:.55});tone(4,length*.4,.012,{attack:.08,release:length*.28,sustain:.4});}
+  else if(name==='bass'){tone(1,length,1,{attack:.11,release:.35,sustain:.82,cutoff:260,wet:.08});tone(2,length,.12,{attack:.12,release:.35,sustain:.78,cutoff:350,wet:.08});}
+  else if(name==='drum'){tone(1,length,1,{attack:.024,release:length*.82,sustain:.6,to:f*.94,cutoff:350,wet:.12});tone(2,length*.5,.1,{attack:.027,release:length*.36,sustain:.5,cutoff:500,wet:.1});}
+ }
  _instrument(name,note,time,length,volume,opts={}){
   const f=hz(note),ch=opts.channel||'music',tone=(ratio,d,v,type='sine',extra={})=>this._tone(f*ratio,d,volume*v,type,time,ch,{...opts,...extra}),noise=(d,v,extra={})=>this._noise(d,volume*v,time,ch,{...opts,...extra});
   if(name==='guqin'||name==='pipa'){const bright=name==='pipa';tone(1,length,1,'wood',{attack:.003,cutoff:bright?3400:1800,release:length*.78,echo:true});tone(2.003,length*.58,.22,'sine');tone(3.01,length*.34,.085,'sine');tone(5.17,length*.16,.027,'sine');noise(.025,.10,{highpass:1600,wet:.04});}

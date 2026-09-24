@@ -1,7 +1,7 @@
 import {AstralFrontispiece} from './astral.js?v=10';
 import {ARCHIVE} from './archive.js?v=10';
 import {WorldRenderer} from './renderer.js?v=10';
-import {AudioEngine} from './audio.js?v=13';
+import {AudioEngine} from './audio.js?v=15';
 import {playIntro} from './intro.js?v=11';
 import {CHAPTERS} from './manual.js?v=10';
 
