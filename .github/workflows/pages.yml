@@ -11,8 +11,8 @@ concurrency:
   group: github-pages
   cancel-in-progress: false
 env:
-  RELEASE_ARCHIVE: "https://d2ol7oe51mr4n9.cloudfront.net/user_3JhNmvCzUCKk0qtTSDENBipdTpA/30a9218f-48c1-4e64-af77-3bab81ad82bd.zip"
-  RELEASE_SHA256: "b200b24afa7285d6bea84561f038193e3664b3392e247e2b14e5199169ab5705"
+  RELEASE_ARCHIVE: "https://d2ol7oe51mr4n9.cloudfront.net/user_3JhNmvCzUCKk0qtTSDENBipdTpA/aa305b74-f1f7-47fc-952e-9d30b5511ac5.zip"
+  RELEASE_SHA256: "6e3b21a9a92880cd2124dda05bf608dda3314915ef2b28c61df3eae839b8f842"
 jobs:
   publish:
     runs-on: ubuntu-latest
