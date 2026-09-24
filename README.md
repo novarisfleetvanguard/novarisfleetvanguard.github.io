@@ -20,9 +20,9 @@ Menus do not pause a shared mission. Respawning, travel, starting another match 
 
 ## World and craft
 
-Shogun armor, Roman and Greek military forms, medieval standards and northern longship silhouettes meet an original cosmic setting. The editable Blender kit contains the pilot, fighters, alien, flagship, corridor and rift core. The opening is an original nine-second ink-and-starlight sequence, followed by an animated astral loading scene that waits for the player to enter command. Original eight-bar music arrangements combine plucked strings, tuned percussion, bowed voices and celestial bells, with one musical score active at a time. Spatial action cues and continuous flight audio share the same volume controls.
+Shogun armor, Roman and Greek military forms, medieval standards and northern longship silhouettes meet an original cosmic setting. The editable Blender kit contains the pilot, fighters, alien, flagship, corridor and rift core. The opening is an original twenty-four-second ink-and-starlight sequence, followed by an animated astral loading scene that waits for the player to enter command. An original dark mythic theme combines plucked strings, bowed voices, breathy flute, ceremonial percussion and celestial bells. The same musical passage continues through the opening, loading, command menu, lobby and initial orbital flight without restarting; later zones change arrangement at a phrase boundary, with one musical score active at a time. Spatial action cues and continuous flight audio share the same volume controls.
 
-**A Beautiful Cosmic Showcase: Dontaeus A. Meek**
+**Dontaeus A. Meek**
 
 The animated insignia pairs an ivory-and-gold shogun sword with a cyan-chambered space pistol. Nine coordinated motion layers animate its orbit, reactor and blade; both weapons remain fully visible. The reduced-motion option selects a completely still version.
 
@@ -69,3 +69,5 @@ The game needs a browser with WebGL support. Physical-device performance varies;
 `node scripts/check-browser-capture.cjs` follows keyboard navigation into mouse capture, verifies Space firing after the native capture event, and checks neutral input on release. `node scripts/check-browser-roster.cjs` keeps three real pilots in a room to verify focus and held clicks survive unrelated crew updates; confirmed seat removal must still work. Both use the same URL and report settings as the browser audit.
 
 `node scripts/check-audio-spatial.cjs` checks three-dimensional action-sound distance calculations, including vertical separation in space.
+
+`node scripts/check-mythic-flow.cjs` checks the continuous opening theme, phrase handoff and cleanup, muted and full-length offline audio, and deterministic intro frames at desktop and narrow portrait/landscape sizes. Set `GAME_URL`, `CHROMIUM_PATH`, and optionally `AUDIT_DIR`; these are disclosed module fixtures alongside ordinary browser acceptance.

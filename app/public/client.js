@@ -1,8 +1,8 @@
 import {AstralFrontispiece} from './astral.js?v=10';
 import {ARCHIVE} from './archive.js?v=10';
 import {WorldRenderer} from './renderer.js?v=10';
-import {AudioEngine} from './audio.js?v=10';
-import {playIntro} from './intro.js?v=10';
+import {AudioEngine} from './audio.js?v=11';
+import {playIntro} from './intro.js?v=11';
 import {CHAPTERS} from './manual.js?v=10';
 
 const $=id=>document.getElementById(id);
@@ -33,7 +33,7 @@ let astral=null,loadPromise=null,finishingIntro=false,lastCombatAt=0,damageUntil
 const arrivals=new Set();
 let world=null,loaded=false,view=null,you=null,ws=null,room='',intentionalClose=false,reconnectTimer=null,reconnectCount=0;
 let yaw=0,pitch=0,lastZone='',lastPhase='',lastSeq=0,lastStateAt=0,modalKind='',manualPage=0;
-let introController=null,booted=false,activePanel='boot',deathShown=false,resultShown=false;
+let introController=null,introDissolve=null,booted=false,activePanel='boot',deathShown=false,resultShown=false;
 const keys=new Set();let mouseFire=false,dragPointer=null,previousPointer={x:0,y:0},lastRender=performance.now(),fpsFrames=0,fpsTime=0,fps=60;
 const log=[];const canvas=$('world'),modal=$('modal'),body=$('modal-body');
 const zones={space:'THE STARFALL EXPANSE',ember:'EMBER REACH',veil:'VEIL GARDEN',dreadnought:'THE HOLLOW CITADEL'};
@@ -70,8 +70,10 @@ $('manual-next').onclick=()=>{if(manualPage===CHAPTERS.length-1){try{localStorag
 ['menu-guide','lobby-guide','hud-guide'].forEach(id=>$(id).onclick=()=>manual());
 function loadingStage(n){['load-model','load-worlds','load-ready'].forEach((id,i)=>{const el=$(id);el.classList.toggle('done',i<n);el.classList.toggle('active',i===n);el.querySelector('i').textContent=i<n?'COMPLETE':i===n?'ASSEMBLING':'WAITING';});}
 async function loadWorld(){if(loaded)return;if(loadPromise)return loadPromise;loadPromise=(async()=>{void astral?.load().catch(e=>console.warn('Vessel preview unavailable',e));world?.dispose();world=null;world=new WorldRenderer(canvas,{quality:settings.quality,reducedMotion:settings.reduced});await world.load(progress=>{const stage=progress.fraction<.55?0:progress.fraction<1?1:2;loadingStage(stage);$('load-status').textContent=['Forging crescent hulls and ivory armor…','Charting Ember Reach and Veil Garden…','The fleet awaits your command.'][stage];});loaded=true;})();try{await loadPromise;}catch(e){world?.dispose();world=null;loaded=false;loadPromise=null;throw e;}}
-async function finishIntro(){if(finishingIntro)return;finishingIntro=true;introController?.stop();panel('loading');audio.setScene('menu');loadingStage(0);$('load-retry').classList.add('hidden');try{await loadWorld();loadingStage(3);$('load-status').textContent='The Vanguard is ready. Continue when you choose.';$('load-enter').classList.remove('hidden');}catch(error){console.error(error);$('load-status').textContent=/webgl|graphics context/i.test(String(error?.message))?'This browser could not start 3D graphics. Enable hardware acceleration or try an up-to-date browser, then retry.':'The armory could not load. Check your connection, then retry.';$('load-retry').classList.remove('hidden');}finally{finishingIntro=false;}}
-function beginIntro(){introController?.stop();panel('intro');audio.setScene('intro');introController=playIntro($('intro-canvas'),{onComplete:finishIntro,reducedMotion:settings.reduced,audio});}
+function cancelIntroDissolve(){const fade=introDissolve;introDissolve=null;fade?.cancel();$('intro').style.pointerEvents='';$('intro').classList.add('hidden');}
+function dissolveIntro(){if(settings.reduced)return;const element=$('intro');element.classList.remove('hidden');element.style.pointerEvents='none';const fade=element.animate([{opacity:1},{opacity:0}],{duration:1100,easing:'ease-in-out'});introDissolve=fade;const complete=()=>{if(introDissolve!==fade)return;introDissolve=null;element.classList.add('hidden');element.style.pointerEvents='';};fade.finished.then(complete,complete);}
+async function finishIntro(){if(finishingIntro)return;finishingIntro=true;const fromIntro=activePanel==='intro';introController?.stop();cancelIntroDissolve();panel('loading');if(fromIntro)dissolveIntro();audio.setScene('menu');loadingStage(0);$('load-retry').classList.add('hidden');try{await loadWorld();loadingStage(3);$('load-status').textContent='The Vanguard is ready. Continue when you choose.';$('load-enter').classList.remove('hidden');}catch(error){console.error(error);$('load-status').textContent=/webgl|graphics context/i.test(String(error?.message))?'This browser could not start 3D graphics. Enable hardware acceleration or try an up-to-date browser, then retry.':'The armory could not load. Check your connection, then retry.';$('load-retry').classList.remove('hidden');}finally{finishingIntro=false;}}
+function beginIntro(){introController?.stop();cancelIntroDissolve();panel('intro');audio.setScene('intro');void loadWorld().catch(()=>{});introController=playIntro($('intro-canvas'),{onComplete:finishIntro,reducedMotion:settings.reduced,audio});}
 $('enter').onclick=()=>{if(booted)return;booted=true;void audio.unlock();beginIntro();};
 $('skip-intro').onclick=finishIntro;$('replay-intro').onclick=beginIntro;$('load-retry').onclick=finishIntro;
 $('load-enter').onclick=()=>{panel('menu');const code=new URLSearchParams(location.search).get('room');if(code){$('room-input').value=code;$('join-form').classList.remove('hidden');notice('Crew invitation loaded. Enter your callsign, then select JOIN.');}};
