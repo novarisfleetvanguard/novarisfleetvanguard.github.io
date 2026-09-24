@@ -65,3 +65,7 @@ The game needs a browser with WebGL support. Physical-device performance varies;
 `node scripts/check-browser-keyboard.cjs` checks keyboard launch, firing after arrival and notice dismissal, and focus inside the manual. `BROWSER` selects Chromium, Firefox or WebKit; install the matching Playwright browser first.
 
 `node scripts/check-browser-interruption.cjs` exercises real boarding, sabotage, reconstruction and replay across deliberate connection loss. It verifies that unsent choices stay open for an explicit retry and that resumed play has neutral controls. It uses the same browser, URL and report environment variables as the other browser checks.
+
+`node scripts/check-browser-capture.cjs` follows keyboard navigation into mouse capture, verifies Space firing after the native capture event, and checks neutral input on release. `node scripts/check-browser-roster.cjs` keeps three real pilots in a room to verify focus and held clicks survive unrelated crew updates; confirmed seat removal must still work. Both use the same URL and report settings as the browser audit.
+
+`node scripts/check-audio-spatial.cjs` checks three-dimensional action-sound distance calculations, including vertical separation in space.

@@ -1,5 +1,5 @@
-import {SCORES,scheduleScore} from './audio-score.js?v=9';
-import {playEffect} from './audio-effects.js?v=9';
+import {SCORES,scheduleScore} from './audio-score.js?v=10';
+import {playEffect} from './audio-effects.js?v=10';
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,Number.isFinite(Number(v))?Number(v):lo));
 const hz=n=>440*2**((n-69)/12);
 /** Original adaptive score and effects. No sound or context exists before unlock(). */

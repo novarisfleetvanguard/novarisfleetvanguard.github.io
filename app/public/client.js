@@ -1,9 +1,9 @@
-import {AstralFrontispiece} from './astral.js?v=9';
-import {ARCHIVE} from './archive.js?v=9';
-import {WorldRenderer} from './renderer.js?v=9';
-import {AudioEngine} from './audio.js?v=9';
-import {playIntro} from './intro.js?v=9';
-import {CHAPTERS} from './manual.js?v=9';
+import {AstralFrontispiece} from './astral.js?v=10';
+import {ARCHIVE} from './archive.js?v=10';
+import {WorldRenderer} from './renderer.js?v=10';
+import {AudioEngine} from './audio.js?v=10';
+import {playIntro} from './intro.js?v=10';
+import {CHAPTERS} from './manual.js?v=10';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -42,7 +42,7 @@ const self=()=>view?.players?.find(p=>p.id===you);
 const canPlay=()=>view?.phase==='playing'&&self()?.alive&&!modal.open&&activePanel==='hud'&&!document.hidden;
 try{astral=new AstralFrontispiece($('astral'),{quality:settings.quality,reducedMotion:settings.reduced});astral.load().catch(e=>console.warn('Vessel preview unavailable',e));}catch(e){console.warn('Astral scene unavailable',e);}
 canvas.style.visibility='hidden';
-function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=9';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
+function updateBrandMotion(){const source='./'+(settings.reduced?'vanguard-mark-static.svg':'vanguard-mark.svg')+'?v=10';document.querySelectorAll('img.vanguard-mark').forEach(img=>{if(img.getAttribute('src')!==source)img.src=source;});}
 updateBrandMotion();
 function saveSettings(){updateBrandMotion();try{localStorage.setItem('novaris-settings',JSON.stringify(settings));}catch{}audio.setMusicVolume(settings.music);audio.setSfxVolume(settings.sfx);audio.setMuted(settings.muted);world?.setQuality?.(settings.quality);world?.setReducedMotion?.(settings.reduced);astral?.setReducedMotion(settings.reduced);astral?.setQuality?.(settings.quality);audio.setReducedMotion?.(settings.reduced);}
 function notice(text){if(modal.open){const output=modalKind==='interact'?$('interact-result'):$('modal-notice');if(output){output.textContent=text;output.classList.remove('hidden');return;}}$('toast-text').textContent=text;$('toast').classList.remove('hidden');}
@@ -201,7 +201,7 @@ canvas.addEventListener('pointerdown',e=>{if(!canPlay())return;syncMouseButtons(
 canvas.addEventListener('pointermove',e=>{if(!canPlay())return;syncMouseButtons(e);let dx=0,dy=0;if(document.pointerLockElement===canvas){dx=e.movementX;dy=e.movementY;}else if(dragPointer===e.pointerId){dx=e.clientX-previousPointer.x;dy=e.clientY-previousPointer.y;previousPointer={x:e.clientX,y:e.clientY};}else return;look(dx,dy);});
 const endPointer=()=>{mouseFire=false;mouseGuard=false;dragPointer=null;};canvas.addEventListener('pointerup',endPointer);canvas.addEventListener('pointercancel',endPointer);canvas.addEventListener('lostpointercapture',endPointer);canvas.addEventListener('contextmenu',e=>e.preventDefault());
 function look(dx,dy){yaw-=dx*.003*settings.sensitivity;pitch=clamp(pitch-dy*.0024*settings.sensitivity*(settings.invert?-1:1),-1.25,1.25);}
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==canvas)releaseInput();});
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas)canvas.focus({preventScroll:true});else releaseInput();});
 $('aim-lock').onclick=async()=>{try{await canvas.requestPointerLock();}catch{notice('Mouse lock is unavailable here. Drag on the world to aim, or use the arrow keys.');}};
 document.querySelectorAll('[data-key]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();keys.add(b.dataset.key);b.setPointerCapture(e.pointerId);};b.onpointerup=b.onpointercancel=b.onlostpointercapture=b.onblur=()=>keys.delete(b.dataset.key);b.onkeydown=e=>{if(['Space','Enter'].includes(e.code)){e.preventDefault();keys.add(b.dataset.key);}};b.onkeyup=e=>{if(['Space','Enter'].includes(e.code)){e.preventDefault();keys.delete(b.dataset.key);}};});
 function drawTacticalMap(){const p=self(),c=$('tactical-map');if(!p||!c)return;const ctx=c.getContext('2d'),W=c.width,H=c.height,span=p.zone==='space'?400:p.zone.startsWith('ship:')||p.zone==='dreadnought'?70:150,k=Math.min(W,H)/span*.87,cx=W/2,cy=H/2;ctx.clearRect(0,0,W,H);ctx.strokeStyle='#d9b77c16';ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}const pos=o=>[cx-o.x*k,cy-o.z*k];ctx.fillStyle='#b1b8c033';for(const o of view.obstacles||[]){if(o.zone!==p.zone)continue;const [x,y]=pos(o);ctx.fillRect(x-o.hx*k,y-o.hz*k,o.hx*k*2,o.hz*k*2);}for(const t of view.interactables.filter(x=>x.zone===p.zone)){const [x,y]=pos(t);ctx.strokeStyle=t.available?'#d9b77c':'#646578';ctx.lineWidth=1.5;ctx.strokeRect(x-4,y-4,8,8);ctx.font='10px Manrope,Arial';ctx.fillStyle=t.available?'#d9b77c':'#878492';ctx.textAlign='center';ctx.fillText(t.label.replace('Enter your ship','YOUR SHIP').slice(0,23),x,y-9);}for(const q of [...view.npcs,...view.players]){if(q.zone!==p.zone||!q.alive||q.connected===false)continue;const [x,y]=pos(q);ctx.fillStyle=q.id===you?'#faf0cf':q.id&&view.players.some(a=>a.id===q.id)&&view.mode==='expedition'?'#a3dadc':'#d57564';ctx.beginPath();ctx.arc(x,y,q.id===you?5:3,0,Math.PI*2);ctx.fill();}const [px,py]=pos(p);ctx.strokeStyle='#fff3d4';ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-Math.sin(yaw)*16,py-Math.cos(yaw)*16);ctx.stroke();ctx.fillStyle='#948a76';ctx.textAlign='left';ctx.font='9px Manrope,Arial';ctx.fillText('TOP VIEW / '+zoneName(p.zone)+' / ELEVATION '+Math.round(p.y)+' m',16,H-16);}

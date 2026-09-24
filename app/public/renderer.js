@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { loadVanguardModel } from './model-loader.js?v=9';
-import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=9';
-import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=9';
-import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=9';
+import { loadVanguardModel } from './model-loader.js?v=10';
+import { mergeGeometries } from './vendor/utils/BufferGeometryUtils.js?v=10';
+import { astralSpace, astralPlanet, astralInterior, createCover } from './world-art.js?v=10';
+import { decorateCombatant, animateCombatant, combatEvent } from './combat-art.js?v=10';
 
 const V=THREE.Vector3, C=THREE.Color, TAU=Math.PI*2;
 const list=x=>Array.isArray(x)?x:Object.values(x||{});
